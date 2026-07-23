@@ -4,7 +4,7 @@
  * Created: 2026-07-23
  */
 
-import { ref } from 'vue';
+import { ref, watch } from 'vue';
 
 export interface SearchResult {
   id: string;
@@ -16,12 +16,20 @@ export interface SearchResult {
   plot: string;
 }
 
+const STORAGE_KEY_OMDB = 'pulse_omdb_api_key';
+
 const searchResults = ref<SearchResult[]>([]);
 const isSearching = ref(false);
 const searchError = ref<string | null>(null);
+const omdbApiKey = ref<string>(localStorage.getItem(STORAGE_KEY_OMDB) || '');
+
+// Synchronize API Key to LocalStorage
+watch(omdbApiKey, (newKey) => {
+  localStorage.setItem(STORAGE_KEY_OMDB, newKey.trim());
+});
 
 /**
- * Strips HTML tags from text returned by the API.
+ * Strips HTML tags from text returned by the TVMaze API.
  */
 function stripHtml(html: string): string {
   if (!html) return '';
@@ -29,6 +37,90 @@ function stripHtml(html: string): string {
 }
 
 export function useMovieSearch() {
+  /**
+   * Search movies using OMDb API.
+   */
+  const searchOMDb = async (query: string, apiKey: string) => {
+    const searchUrl = `https://www.omdbapi.com/?s=${encodeURIComponent(query)}&apikey=${apiKey}`;
+    const response = await fetch(searchUrl);
+    if (!response.ok) {
+      throw new Error(`OMDb responded with status code ${response.status}`);
+    }
+    const data = await response.json();
+    
+    if (data.Response === 'False') {
+      throw new Error(data.Error || 'OMDb Search request failed.');
+    }
+
+    const searchList = data.Search || [];
+    // Limit to top 6 items and fetch full details concurrently to resolve genres, rating, and plot
+    const topResults = searchList.slice(0, 6);
+    
+    const detailPromises = topResults.map(async (movie: any) => {
+      const detailUrl = `https://www.omdbapi.com/?i=${movie.imdbID}&apikey=${apiKey}`;
+      try {
+        const detailResponse = await fetch(detailUrl);
+        if (detailResponse.ok) {
+          return await detailResponse.json();
+        }
+      } catch (e) {
+        console.error(`Failed to fetch OMDb details for ${movie.imdbID}:`, e);
+      }
+      return null;
+    });
+
+    const details = await Promise.all(detailPromises);
+
+    searchResults.value = details
+      .filter(Boolean)
+      .map((detail: any) => {
+        const genreList = detail.Genre && detail.Genre !== 'N/A'
+          ? detail.Genre.split(',').map((s: string) => s.trim())
+          : [];
+          
+        return {
+          id: detail.imdbID,
+          title: detail.Title || 'Untitled',
+          year: detail.Year || 'N/A',
+          poster: detail.Poster && detail.Poster !== 'N/A' ? detail.Poster : '',
+          genre: genreList,
+          rating: detail.imdbRating || 'N/A',
+          plot: detail.Plot && detail.Plot !== 'N/A' ? detail.Plot : 'No description available.'
+        };
+      });
+  };
+
+  /**
+   * Search movies using TVMaze (Tokenless Fallback).
+   */
+  const searchTVMaze = async (query: string) => {
+    const searchUrl = `https://api.tvmaze.com/search/shows?q=${encodeURIComponent(query)}`;
+    const response = await fetch(searchUrl);
+    
+    if (!response.ok) {
+      throw new Error(`TVMaze responded with status code ${response.status}`);
+    }
+
+    const data = await response.json();
+    
+    searchResults.value = data.map((item: any) => {
+      const show = item.show;
+      const year = show.premiered ? show.premiered.substring(0, 4) : 'N/A';
+      const poster = show.image?.medium || show.image?.original || '';
+      const rating = show.rating?.average ? String(show.rating.average) : 'N/A';
+
+      return {
+        id: `tvm-${show.id}`,
+        title: show.name || 'Untitled',
+        year,
+        poster,
+        genre: show.genres || [],
+        rating,
+        plot: stripHtml(show.summary) || 'No summary description available.'
+      };
+    });
+  };
+
   const searchMovies = async (query: string) => {
     const trimmed = query.trim();
     if (!trimmed) {
@@ -40,42 +132,14 @@ export function useMovieSearch() {
     searchError.value = null;
 
     try {
-      const response = await fetch(
-        `https://api.tvmaze.com/search/shows?q=${encodeURIComponent(trimmed)}`
-      );
-      
-      if (!response.ok) {
-        throw new Error(`API responded with status code ${response.status}`);
+      if (omdbApiKey.value.trim()) {
+        await searchOMDb(trimmed, omdbApiKey.value.trim());
+      } else {
+        await searchTVMaze(trimmed);
       }
-
-      const data = await response.json();
-      
-      // Parse TVMaze objects into standard SearchResult shapes
-      searchResults.value = data.map((item: any) => {
-        const show = item.show;
-        
-        // Extract premiered year
-        const year = show.premiered ? show.premiered.substring(0, 4) : 'N/A';
-        
-        // Fallback for missing poster images
-        const poster = show.image?.medium || show.image?.original || '';
-        
-        // Rating mapping
-        const rating = show.rating?.average ? String(show.rating.average) : 'N/A';
-
-        return {
-          id: `tvm-${show.id}`,
-          title: show.name || 'Untitled',
-          year,
-          poster,
-          genre: show.genres || [],
-          rating,
-          plot: stripHtml(show.summary) || 'No summary description available.'
-        };
-      });
     } catch (err: any) {
       console.error('API search failure:', err);
-      searchError.value = 'Failed to fetch search results. Check network connection.';
+      searchError.value = err.message || 'Failed to fetch search results. Check network connection.';
       searchResults.value = [];
     } finally {
       isSearching.value = false;
@@ -87,11 +151,29 @@ export function useMovieSearch() {
     searchError.value = null;
   };
 
+  /**
+   * Validates if a given OMDb API Key is working correctly.
+   */
+  const validateOmdbKey = async (key: string): Promise<boolean> => {
+    try {
+      const response = await fetch(`https://www.omdbapi.com/?t=Inception&apikey=${key}`);
+      if (response.ok) {
+        const data = await response.json();
+        return data.Response === 'True';
+      }
+    } catch (e) {
+      console.error('Key validation failed:', e);
+    }
+    return false;
+  };
+
   return {
     searchResults,
     isSearching,
     searchError,
+    omdbApiKey,
     searchMovies,
-    clearSearch
+    clearSearch,
+    validateOmdbKey
   };
 }

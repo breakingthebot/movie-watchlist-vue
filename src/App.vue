@@ -3,13 +3,50 @@ import { ref, computed } from 'vue';
 import { useWatchlist } from './composables/useWatchlist';
 import { useMovieSearch } from './composables/useMovieSearch';
 
-const { watchlist, addToWatchlist, removeFromWatchlist, toggleWatched, updateNotes } = useWatchlist();
-const { searchResults, isSearching, searchError, searchMovies, clearSearch } = useMovieSearch();
+const { watchlist, addToWatchlist, removeFromWatchlist, toggleWatched, updateNotes, updateUserRating, updateWatchedAt } = useWatchlist();
+const { searchResults, isSearching, searchError, searchMovies, clearSearch, omdbApiKey, validateOmdbKey } = useMovieSearch();
 
 const query = ref('');
 const activeTab = ref<'all' | 'plan' | 'watched'>('all');
 const selectedGenre = ref<string>('All');
 const activeNotesMovieId = ref<string | null>(null);
+
+const showSettingsModal = ref(false);
+const tempApiKey = ref(omdbApiKey.value);
+const validationStatus = ref<'idle' | 'validating' | 'valid' | 'invalid'>('idle');
+
+// Save settings key
+const handleSaveSettings = async () => {
+  const trimmedKey = tempApiKey.value.trim();
+  if (!trimmedKey) {
+    omdbApiKey.value = '';
+    showSettingsModal.value = false;
+    validationStatus.value = 'idle';
+    return;
+  }
+  
+  validationStatus.value = 'validating';
+  const isValid = await validateOmdbKey(trimmedKey);
+  
+  if (isValid) {
+    validationStatus.value = 'valid';
+    omdbApiKey.value = trimmedKey;
+    setTimeout(() => {
+      showSettingsModal.value = false;
+      validationStatus.value = 'idle';
+    }, 1000);
+  } else {
+    validationStatus.value = 'invalid';
+  }
+};
+
+// Clear key
+const handleClearKey = () => {
+  tempApiKey.value = '';
+  omdbApiKey.value = '';
+  validationStatus.value = 'idle';
+  showSettingsModal.value = false;
+};
 
 // Trigger movie search
 const handleSearch = async () => {
@@ -90,19 +127,28 @@ const toggleNotesSection = (id: string) => {
         <span class="pulse-icon">🎬</span>
         <h1>PulseMovie</h1>
       </div>
-      <div class="stats-panel">
-        <div class="stat-chip">
-          <span class="stat-label">Total</span>
-          <span class="stat-val val-blue">{{ stats.total }}</span>
+      <div class="stats-panel-group">
+        <div class="stats-panel">
+          <div class="stat-chip">
+            <span class="stat-label">Total</span>
+            <span class="stat-val val-blue">{{ stats.total }}</span>
+          </div>
+          <div class="stat-chip">
+            <span class="stat-label">Plan to Watch</span>
+            <span class="stat-val val-purple">{{ stats.plan }}</span>
+          </div>
+          <div class="stat-chip">
+            <span class="stat-label">Watched</span>
+            <span class="stat-val val-green">{{ stats.watched }}</span>
+          </div>
         </div>
-        <div class="stat-chip">
-          <span class="stat-label">Plan to Watch</span>
-          <span class="stat-val val-purple">{{ stats.plan }}</span>
-        </div>
-        <div class="stat-chip">
-          <span class="stat-label">Watched</span>
-          <span class="stat-val val-green">{{ stats.watched }}</span>
-        </div>
+        <button 
+          @click="showSettingsModal = true" 
+          class="btn btn-secondary btn-icon-only settings-trigger-btn" 
+          title="API Configuration Settings"
+        >
+          ⚙️
+        </button>
       </div>
     </header>
 
@@ -231,7 +277,16 @@ const toggleNotesSection = (id: string) => {
                   {{ movie.watched ? 'Watched' : 'Plan to Watch' }}
                 </span>
               </div>
-              <h4>{{ movie.title }}</h4>
+              <div class="title-row">
+                <h4>{{ movie.title }}</h4>
+                <div v-if="movie.userRating" class="user-card-rating" :title="'Rated ' + movie.userRating + '/5'">
+                  <span v-for="star in movie.userRating" :key="star" class="star-fill">★</span>
+                  <span v-for="star in (5 - movie.userRating)" :key="star" class="star-empty">☆</span>
+                </div>
+              </div>
+              <div v-if="movie.watched && movie.watchedAt" class="watched-date-badge">
+                🗓️ Watched: {{ movie.watchedAt }}
+              </div>
               
               <div class="genre-row">
                 <span v-for="g in movie.genre" :key="g" class="genre-badge">{{ g }}</span>
@@ -265,12 +320,40 @@ const toggleNotesSection = (id: string) => {
 
               <!-- Collapsible Notes slide-down form -->
               <div v-if="activeNotesMovieId === movie.id" class="notes-panel fade-in">
-                <label>My Private Review Notes:</label>
-                <textarea 
-                  v-model="movie.notes" 
-                  @input="updateNotes(movie.id, (movie.notes || ''))"
-                  placeholder="Add your notes, review rating details, thoughts..."
-                ></textarea>
+                <div class="rating-input-group">
+                  <label>My Rating:</label>
+                  <div class="rating-stars">
+                    <span 
+                      v-for="star in 5" 
+                      :key="star" 
+                      class="star-btn" 
+                      :class="{ active: star <= (movie.userRating || 0) }"
+                      @click="updateUserRating(movie.id, star)"
+                    >
+                      ★
+                    </span>
+                  </div>
+                </div>
+
+                <div class="watched-date-group">
+                  <label for="watchedAtInput">Watched On:</label>
+                  <input 
+                    id="watchedAtInput" 
+                    type="date" 
+                    :value="movie.watchedAt" 
+                    @input="updateWatchedAt(movie.id, ($event.target as HTMLInputElement).value)" 
+                    class="date-input"
+                  />
+                </div>
+
+                <div class="comments-group">
+                  <label>Review Notes:</label>
+                  <textarea 
+                    v-model="movie.notes" 
+                    @input="updateNotes(movie.id, (movie.notes || ''))"
+                    placeholder="Write thoughts, review details, memories..."
+                  ></textarea>
+                </div>
               </div>
             </div>
           </div>
@@ -284,6 +367,38 @@ const toggleNotesSection = (id: string) => {
         </div>
       </section>
     </main>
+
+    <!-- Settings Modal -->
+    <div v-if="showSettingsModal" class="modal-overlay fade-in" @click.self="showSettingsModal = false">
+      <div class="modal-card">
+        <div class="modal-header">
+          <h4>Settings & API Providers</h4>
+          <button @click="showSettingsModal = false" class="close-modal-btn">✕</button>
+        </div>
+        <div class="modal-body">
+          <div class="form-group">
+            <label for="apiKeyInput">Custom OMDb API Key:</label>
+            <p class="input-tip">By default, the app queries TVMaze with no keys required. Paste a custom OMDb key to fetch movies from OMDb instead.</p>
+            <input 
+              id="apiKeyInput" 
+              v-model="tempApiKey" 
+              type="text" 
+              placeholder="Enter OMDb API Key (e.g. a1b2c3d4)..." 
+              class="search-input"
+            />
+          </div>
+          <div class="validation-row" v-if="validationStatus !== 'idle'">
+            <span v-if="validationStatus === 'validating'" class="status-validating">🔄 Verifying key connection...</span>
+            <span v-else-if="validationStatus === 'valid'" class="status-valid">✅ Key is working correctly!</span>
+            <span v-else-if="validationStatus === 'invalid'" class="status-invalid">❌ Invalid API Key. Please verify key is active.</span>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button @click="handleClearKey" class="btn btn-secondary" :disabled="!tempApiKey">Clear Key</button>
+          <button @click="handleSaveSettings" class="btn btn-primary">Save Config</button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -910,5 +1025,224 @@ h3 {
     flex-grow: 1;
     text-align: center;
   }
+}
+
+.stats-panel-group {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.settings-trigger-btn {
+  background: var(--bg-card);
+  border-radius: 12px;
+  font-size: 16px;
+}
+
+/* Modal overlay and card styling */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(3, 7, 18, 0.7);
+  backdrop-filter: blur(8px);
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+
+.modal-card {
+  background: #0f172a;
+  border: 1px solid var(--border-color);
+  border-radius: 20px;
+  width: 100%;
+  max-width: 480px;
+  box-shadow: var(--shadow-premium);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.modal-header h4 {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.close-modal-btn {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 16px;
+}
+
+.close-modal-btn:hover {
+  color: var(--text-primary);
+}
+
+.modal-body {
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.form-group label {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  text-align: left;
+}
+
+.input-tip {
+  font-size: 12px;
+  color: var(--text-secondary);
+  line-height: 1.4;
+  text-align: left;
+}
+
+.validation-row {
+  font-size: 13px;
+  font-weight: 500;
+  text-align: left;
+}
+
+.status-validating { color: var(--accent-blue); }
+.status-valid { color: var(--accent-green); }
+.status-invalid { color: var(--accent-coral); }
+
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 20px 24px;
+  background: rgba(0, 0, 0, 0.15);
+  border-top: 1px solid var(--border-color);
+}
+
+/* User ratings, date stars widgets styles */
+.title-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.title-row h4 {
+  margin-bottom: 0 !important;
+}
+
+.user-card-rating {
+  display: inline-flex;
+  gap: 2px;
+  font-size: 13px;
+  line-height: 1.3;
+}
+
+.star-fill {
+  color: #fbbf24;
+}
+
+.star-empty {
+  color: rgba(255, 255, 255, 0.15);
+}
+
+.watched-date-badge {
+  font-size: 11px;
+  color: var(--text-secondary);
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border-color);
+  padding: 4px 8px;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 12px;
+  width: fit-content;
+}
+
+/* Notes slide down items */
+.rating-input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.rating-stars {
+  display: flex;
+  gap: 6px;
+}
+
+.star-btn {
+  font-size: 20px;
+  color: rgba(255, 255, 255, 0.15);
+  cursor: pointer;
+  transition: transform 0.15s, color 0.15s;
+}
+
+.star-btn:hover {
+  transform: scale(1.2);
+  color: #fcd34d;
+}
+
+.star-btn.active {
+  color: #fbbf24;
+}
+
+.watched-date-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  text-align: left;
+}
+
+.watched-date-group label,
+.rating-input-group label,
+.comments-group label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-align: left;
+}
+
+.date-input {
+  width: 100%;
+  padding: 10px 14px;
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 13px;
+}
+
+.date-input:focus {
+  outline: none;
+  border-color: var(--accent-purple);
+}
+
+.comments-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 </style>

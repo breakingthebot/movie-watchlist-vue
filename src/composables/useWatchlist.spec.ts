@@ -77,4 +77,22 @@ describe('useWatchlist composable', () => {
     updateNotes(mockMovie.id, 'Amazing Christopher Nolan film.');
     expect(watchlist.value[0].notes).toBe('Amazing Christopher Nolan film.');
   });
+
+  it('should update user rating', () => {
+    const { watchlist, addToWatchlist, updateUserRating } = useWatchlist();
+    addToWatchlist(mockMovie);
+    expect(watchlist.value[0].userRating).toBeUndefined();
+
+    updateUserRating(mockMovie.id, 5);
+    expect(watchlist.value[0].userRating).toBe(5);
+  });
+
+  it('should update watched date', () => {
+    const { watchlist, addToWatchlist, updateWatchedAt } = useWatchlist();
+    addToWatchlist(mockMovie);
+    expect(watchlist.value[0].watchedAt).toBeUndefined();
+
+    updateWatchedAt(mockMovie.id, '2026-07-23');
+    expect(watchlist.value[0].watchedAt).toBe('2026-07-23');
+  });
 });

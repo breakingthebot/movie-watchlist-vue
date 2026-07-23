@@ -17,6 +17,8 @@ export interface Movie {
   watched: boolean;
   notes?: string;
   addedAt: string;
+  userRating?: number;
+  watchedAt?: string;
 }
 
 const STORAGE_KEY = 'pulse_movie_watchlist';
@@ -98,6 +100,26 @@ export function useWatchlist() {
     }
   };
 
+  /**
+   * Updates user star rating.
+   */
+  const updateUserRating = (id: string, rating: number) => {
+    const movie = watchlist.value.find((m) => m.id === id);
+    if (movie) {
+      movie.userRating = rating;
+    }
+  };
+
+  /**
+   * Updates user watched date.
+   */
+  const updateWatchedAt = (id: string, date: string) => {
+    const movie = watchlist.value.find((m) => m.id === id);
+    if (movie) {
+      movie.watchedAt = date;
+    }
+  };
+
   return {
     watchlist,
     isLoading,
@@ -105,6 +127,8 @@ export function useWatchlist() {
     addToWatchlist,
     removeFromWatchlist,
     toggleWatched,
-    updateNotes
+    updateNotes,
+    updateUserRating,
+    updateWatchedAt
   };
 }

@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.0] - 2026-07-23
+
+### Added
+- Added `userRating` and `watchedAt` properties to the watchlist movie schema.
+- Programmed interactive 1-5 star button selectors in the review notes drawer.
+- Structured calendar watch date calendars.
+- Rendered visual star indicators (★/☆) and date badges on active card lists.
+- Wrote 2 unit tests asserting user rating and date updates.
+
+## [0.6.0] - 2026-07-23
+
+### Added
+- Created settings modal gear triggers on the dashboard header.
+- Programmed connection validation checking OMDb API Key credentials.
+- Integrated concurrent detail fetching for OMDb movie results resolving plots and genres.
+
 ## [0.5.0] - 2026-07-23
 
 ### Added

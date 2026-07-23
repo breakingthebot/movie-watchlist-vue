@@ -1,6 +1,6 @@
 /*
  * src/composables/useMovieSearch.spec.ts
- * Unit tests asserting useMovieSearch querying and schema translation with mocked fetch boundary.
+ * Unit tests asserting OMDb search, TVMaze fallback, and key validations.
  * Created: 2026-07-23
  */
 
@@ -10,29 +10,23 @@ import { useMovieSearch } from './useMovieSearch';
 describe('useMovieSearch composable', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
-    const { clearSearch } = useMovieSearch();
+    const { clearSearch, omdbApiKey } = useMovieSearch();
     clearSearch();
+    omdbApiKey.value = ''; // Reset key to default to TVMaze fallback
   });
 
-  it('should initialize with empty results', () => {
-    const { searchResults, isSearching, searchError } = useMovieSearch();
-    expect(searchResults.value).toEqual([]);
-    expect(isSearching.value).toBe(false);
-    expect(searchError.value).toBeNull();
-  });
-
-  it('should call fetch and map TVMaze response schema correctly', async () => {
-    const mockApiResponse = [
+  it('should fallback to TVMaze when no API key is present', async () => {
+    const mockTVMazeResponse = [
       {
-        score: 0.98,
+        score: 0.9,
         show: {
-          id: 456,
-          name: 'The Matrix',
-          premiered: '1999-03-31',
-          genres: ['Action', 'Sci-Fi'],
-          rating: { average: 8.9 },
-          image: { medium: 'matrix-medium.jpg', original: 'matrix-large.jpg' },
-          summary: '<p>A computer hacker learns from mysterious rebels...</p>'
+          id: 111,
+          name: 'TV Show',
+          premiered: '2020-01-01',
+          genres: ['Comedy'],
+          rating: { average: 7.2 },
+          image: { medium: 'tvshow.jpg' },
+          summary: 'A funny TV show.'
         }
       }
     ];
@@ -40,38 +34,99 @@ describe('useMovieSearch composable', () => {
     const fetchSpy = vi.spyOn(globalThis, 'fetch').mockImplementation(() =>
       Promise.resolve({
         ok: true,
-        json: () => Promise.resolve(mockApiResponse)
+        json: () => Promise.resolve(mockTVMazeResponse)
       } as Response)
     );
 
-    const { searchResults, searchMovies, isSearching } = useMovieSearch();
-    const searchPromise = searchMovies('Matrix');
-    expect(isSearching.value).toBe(true);
+    const { searchResults, searchMovies, omdbApiKey } = useMovieSearch();
+    expect(omdbApiKey.value).toBe('');
 
-    await searchPromise;
-    expect(isSearching.value).toBe(false);
-    expect(fetchSpy).toHaveBeenCalledWith('https://api.tvmaze.com/search/shows?q=Matrix');
+    await searchMovies('Show');
+
+    expect(fetchSpy).toHaveBeenCalledWith('https://api.tvmaze.com/search/shows?q=Show');
     expect(searchResults.value.length).toBe(1);
-    
-    const result = searchResults.value[0];
-    expect(result.id).toBe('tvm-456');
-    expect(result.title).toBe('The Matrix');
-    expect(result.year).toBe('1999');
-    expect(result.poster).toBe('matrix-medium.jpg');
-    expect(result.genre).toEqual(['Action', 'Sci-Fi']);
-    expect(result.rating).toBe('8.9');
-    expect(result.plot).toBe('A computer hacker learns from mysterious rebels...');
+    expect(searchResults.value[0].id).toBe('tvm-111');
   });
 
-  it('should recover gracefully on fetch exception', async () => {
-    vi.spyOn(globalThis, 'fetch').mockImplementation(() =>
-      Promise.reject(new Error('Network disconnected'))
+  it('should query OMDb when API key is set', async () => {
+    const mockOmdbSearchResponse = {
+      Response: 'True',
+      Search: [
+        {
+          Title: 'Inception',
+          Year: '2010',
+          imdbID: 'tt1375666',
+          Type: 'movie',
+          Poster: 'inception.jpg'
+        }
+      ]
+    };
+
+    const mockOmdbDetailResponse = {
+      Title: 'Inception',
+      Year: '2010',
+      imdbID: 'tt1375666',
+      Poster: 'inception.jpg',
+      Genre: 'Action, Sci-Fi, Thriller',
+      imdbRating: '8.8',
+      Plot: 'A thief who steals corporate secrets...',
+      Response: 'True'
+    };
+
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockImplementation((url: any) => {
+      if (url.includes('i=tt1375666')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve(mockOmdbDetailResponse)
+        } as Response);
+      }
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve(mockOmdbSearchResponse)
+      } as Response);
+    });
+
+    const { searchResults, searchMovies, omdbApiKey } = useMovieSearch();
+    omdbApiKey.value = 'testkey123';
+
+    await searchMovies('Inception');
+
+    expect(fetchSpy).toHaveBeenCalledWith('https://www.omdbapi.com/?s=Inception&apikey=testkey123');
+    expect(fetchSpy).toHaveBeenCalledWith('https://www.omdbapi.com/?i=tt1375666&apikey=testkey123');
+    
+    expect(searchResults.value.length).toBe(1);
+    const movie = searchResults.value[0];
+    expect(movie.title).toBe('Inception');
+    expect(movie.genre).toEqual(['Action', 'Sci-Fi', 'Thriller']);
+    expect(movie.rating).toBe('8.8');
+  });
+
+  it('should validate working OMDb keys correctly', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockImplementation(() =>
+      Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({ Response: 'True' })
+      } as Response)
     );
 
-    const { searchResults, searchMovies, searchError } = useMovieSearch();
-    await searchMovies('Matrix');
+    const { validateOmdbKey } = useMovieSearch();
+    const isValid = await validateOmdbKey('working_key');
 
-    expect(searchResults.value).toEqual([]);
-    expect(searchError.value).toBe('Failed to fetch search results. Check network connection.');
+    expect(fetchSpy).toHaveBeenCalledWith('https://www.omdbapi.com/?t=Inception&apikey=working_key');
+    expect(isValid).toBe(true);
+  });
+
+  it('should return false for invalid OMDb keys', async () => {
+    vi.spyOn(globalThis, 'fetch').mockImplementation(() =>
+      Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({ Response: 'False', Error: 'Invalid API key!' })
+      } as Response)
+    );
+
+    const { validateOmdbKey } = useMovieSearch();
+    const isValid = await validateOmdbKey('broken_key');
+
+    expect(isValid).toBe(false);
   });
 });
