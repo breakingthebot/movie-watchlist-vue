@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.0] - 2026-07-23
+
+### Added
+- Created `src/utils/stats.ts` module compiling genre counts, ratio completions, and completion percentages.
+- Integrated dynamic statistics accordion widgets positioned above the local watchlist.
+- Rendered gradient progress indicators mapping watch progress percentages by genre.
+- Programmed collapsible arrows to slide panels open and closed.
+- Written 2 unit tests asserting getGenreStats calculations.
+
 ## [0.8.0] - 2026-07-23
 
 ### Added

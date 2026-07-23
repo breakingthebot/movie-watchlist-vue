@@ -3,6 +3,7 @@ import { ref, computed } from 'vue';
 import { useWatchlist } from './composables/useWatchlist';
 import { useMovieSearch } from './composables/useMovieSearch';
 import { useWatchlistBackup } from './composables/useWatchlistBackup';
+import { getGenreStats } from './utils/stats';
 
 const { watchlist, addToWatchlist, removeFromWatchlist, toggleWatched, updateNotes, updateUserRating, updateWatchedAt } = useWatchlist();
 const { searchResults, isSearching, searchError, searchMovies, clearSearch, omdbApiKey, validateOmdbKey } = useMovieSearch();
@@ -12,6 +13,9 @@ const query = ref('');
 const activeTab = ref<'all' | 'plan' | 'watched'>('all');
 const selectedGenre = ref<string>('All');
 const activeNotesMovieId = ref<string | null>(null);
+
+const showAnalytics = ref(true);
+const genreStatsList = computed(() => getGenreStats(watchlist.value));
 
 const showSettingsModal = ref(false);
 const tempApiKey = ref(omdbApiKey.value);
@@ -244,6 +248,32 @@ const toggleNotesSection = (id: string) => {
               <button @click="handleAddToWatchlist(movie)" class="btn btn-purple btn-block">
                 + Add to Watchlist
               </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Watchlist Analytics & Genre Breakdown -->
+      <section v-if="watchlist.length > 0" class="analytics-section card">
+        <div class="analytics-header" @click="showAnalytics = !showAnalytics" title="Toggle Analytics Panel">
+          <div class="analytics-title">
+            <span class="analytics-icon">📊</span>
+            <h3>Watchlist Analytics & Genre Breakdown</h3>
+          </div>
+          <span class="accordion-arrow">{{ showAnalytics ? '▲' : '▼' }}</span>
+        </div>
+        
+        <div v-show="showAnalytics" class="analytics-grid fade-in">
+          <div v-for="stat in genreStatsList" :key="stat.name" class="stat-progress-card">
+            <div class="stat-card-header">
+              <span class="genre-name">{{ stat.name }}</span>
+              <span class="genre-ratio">{{ stat.watched }} / {{ stat.total }} watched</span>
+            </div>
+            <div class="progress-bar-container">
+              <div class="progress-bar-fill" :style="{ width: stat.percentage + '%' }"></div>
+            </div>
+            <div class="stat-card-footer">
+              <span class="genre-percentage">{{ stat.percentage }}% Completed</span>
             </div>
           </div>
         </div>
@@ -1327,5 +1357,95 @@ h3 {
 
 .hidden-file-input {
   display: none;
+}
+
+/* Analytics & Genre Stats styles */
+.analytics-section {
+  user-select: none;
+}
+
+.analytics-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.analytics-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.analytics-icon {
+  font-size: 20px;
+}
+
+.accordion-arrow {
+  font-size: 14px;
+  color: var(--text-secondary);
+  transition: transform 0.2s;
+}
+
+.analytics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 20px;
+  margin-top: 24px;
+  border-top: 1px solid var(--border-color);
+  padding-top: 24px;
+}
+
+.stat-progress-card {
+  background: rgba(13, 17, 28, 0.4);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.stat-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.genre-name {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary);
+  text-align: left;
+}
+
+.genre-ratio {
+  font-size: 11px;
+  color: var(--text-secondary);
+  text-align: right;
+}
+
+.progress-bar-container {
+  width: 100%;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.progress-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent-purple), var(--accent-green));
+  border-radius: 4px;
+  transition: width 0.4s ease-out;
+}
+
+.stat-card-footer {
+  text-align: right;
+}
+
+.genre-percentage {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--accent-green);
 }
 </style>
