@@ -2,9 +2,11 @@
 import { ref, computed } from 'vue';
 import { useWatchlist } from './composables/useWatchlist';
 import { useMovieSearch } from './composables/useMovieSearch';
+import { useWatchlistBackup } from './composables/useWatchlistBackup';
 
 const { watchlist, addToWatchlist, removeFromWatchlist, toggleWatched, updateNotes, updateUserRating, updateWatchedAt } = useWatchlist();
 const { searchResults, isSearching, searchError, searchMovies, clearSearch, omdbApiKey, validateOmdbKey } = useMovieSearch();
+const { exportToCSV, exportToJSON, importFromJSON } = useWatchlistBackup();
 
 const query = ref('');
 const activeTab = ref<'all' | 'plan' | 'watched'>('all');
@@ -14,6 +16,38 @@ const activeNotesMovieId = ref<string | null>(null);
 const showSettingsModal = ref(false);
 const tempApiKey = ref(omdbApiKey.value);
 const validationStatus = ref<'idle' | 'validating' | 'valid' | 'invalid'>('idle');
+
+const fileInput = ref<HTMLInputElement | null>(null);
+const backupFeedback = ref<string | null>(null);
+const backupFeedbackType = ref<'success' | 'error'>('success');
+
+const triggerFileImport = () => {
+  fileInput.value?.click();
+};
+
+const handleFileImport = (event: Event) => {
+  const target = event.target as HTMLInputElement;
+  const file = target.files?.[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const text = e.target?.result as string;
+    const res = importFromJSON(text);
+    if (res.success) {
+      backupFeedbackType.value = 'success';
+      backupFeedback.value = `Successfully imported ${res.count} movie(s).`;
+    } else {
+      backupFeedbackType.value = 'error';
+      backupFeedback.value = res.error || 'Failed to import backup.';
+    }
+    target.value = '';
+    setTimeout(() => {
+      backupFeedback.value = null;
+    }, 4000);
+  };
+  reader.readAsText(file);
+};
 
 // Save settings key
 const handleSaveSettings = async () => {
@@ -391,6 +425,40 @@ const toggleNotesSection = (id: string) => {
             <span v-if="validationStatus === 'validating'" class="status-validating">🔄 Verifying key connection...</span>
             <span v-else-if="validationStatus === 'valid'" class="status-valid">✅ Key is working correctly!</span>
             <span v-else-if="validationStatus === 'invalid'" class="status-invalid">❌ Invalid API Key. Please verify key is active.</span>
+          </div>
+
+          <hr class="modal-divider" />
+
+          <!-- Backups Export Section -->
+          <div class="form-group">
+            <label>Backup & Export Watchlist Data:</label>
+            <p class="input-tip">Download your list as a spreadsheet report or raw JSON configuration profile backup.</p>
+            <div class="backup-btn-row">
+              <button @click="exportToCSV" class="btn btn-secondary btn-block">Download CSV Report</button>
+              <button @click="exportToJSON" class="btn btn-secondary btn-block">Download JSON Backup</button>
+            </div>
+          </div>
+
+          <!-- Backups Import Section -->
+          <div class="form-group">
+            <label>Restore Watchlist Backup:</label>
+            <p class="input-tip">Upload a previously exported JSON backup file to import and merge movies into your current local cache.</p>
+            <button @click="triggerFileImport" class="btn btn-purple btn-block">
+              Upload JSON Backup File
+            </button>
+            <input 
+              ref="fileInput" 
+              type="file" 
+              accept=".json" 
+              @change="handleFileImport" 
+              class="hidden-file-input"
+            />
+          </div>
+
+          <div class="validation-row" v-if="backupFeedback">
+            <span :class="backupFeedbackType === 'success' ? 'status-valid' : 'status-invalid'">
+              {{ backupFeedback }}
+            </span>
           </div>
         </div>
         <div class="modal-footer">
@@ -1244,5 +1312,20 @@ h3 {
   display: flex;
   flex-direction: column;
   gap: 6px;
+}
+
+.modal-divider {
+  border: none;
+  border-top: 1px solid var(--border-color);
+  margin: 8px 0;
+}
+
+.backup-btn-row {
+  display: flex;
+  gap: 12px;
+}
+
+.hidden-file-input {
+  display: none;
 }
 </style>
