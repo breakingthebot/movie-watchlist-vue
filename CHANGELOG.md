@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.0] - 2026-07-23
+
+### Added
+- Created `public/manifest.json` defining standalone app display, theme colors, and icons.
+- Programmed `public/sw.js` Service Worker script caching static assets offline with stale-while-revalidate fallback strategies.
+- Created `src/utils/pwa.ts` service worker registration module and invoked it in `src/main.ts`.
+- Updated `index.html` with web manifest links and theme-color meta headers.
+- Written 2 unit tests in `src/utils/pwa.spec.ts` asserting registration behavior.
+
 ## [0.9.0] - 2026-07-23
 
 ### Added

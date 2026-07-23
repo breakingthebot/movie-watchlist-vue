@@ -1,0 +1,17 @@
+{
+  "name": "PulseMovie Watchlist",
+  "short_name": "PulseMovie",
+  "description": "Track, rate, and manage your movie watchlist offline.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#030712",
+  "theme_color": "#8b5cf6",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
