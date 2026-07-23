@@ -4,7 +4,7 @@
  * Created: 2026-07-23
  */
 
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { useWatchlist } from './useWatchlist';
 
 const mockMovie = {

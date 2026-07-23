@@ -32,7 +32,7 @@ A high-performance, responsive movie watchlist dashboard built with **Vue 3** an
    ```
 
 ## Deployed
-- **Vercel Production App**: *To be deployed on Vercel*
+- **Vercel Production App**: [https://movie-watchlist-vue.vercel.app](https://movie-watchlist-vue.vercel.app)
 - **GitHub Repository**: [https://github.com/breakingthebot/movie-watchlist-vue](https://github.com/breakingthebot/movie-watchlist-vue)
 
 ## Architecture Notes
