@@ -173,6 +173,64 @@ export function useMovieSearch() {
     return false;
   };
 
+  /**
+   * Fetches enriched details (director, cast, runtime, language, status, network) for a movie or show on demand.
+   */
+  const fetchMovieDetails = async (movie: any): Promise<Partial<SearchResult>> => {
+    if (!movie || !movie.id) return {};
+
+    if (movie.id.startsWith('tvm-')) {
+      const rawId = movie.id.replace('tvm-', '');
+      try {
+        const res = await fetch(`https://api.tvmaze.com/shows/${rawId}`);
+        if (res.ok) {
+          const show = await res.json();
+          const networkInfo = show.network?.name
+            ? `Network: ${show.network.name}`
+            : show.webChannel?.name
+            ? `Platform: ${show.webChannel.name}`
+            : undefined;
+
+          const statusInfo = show.status
+            ? `Status: ${show.status}${show.language ? ` (${show.language})` : ''}`
+            : undefined;
+
+          const runtimeInfo = show.runtime
+            ? `${show.runtime} min`
+            : show.averageRuntime
+            ? `${show.averageRuntime} min/ep`
+            : undefined;
+
+          return {
+            runtime: runtimeInfo,
+            director: networkInfo,
+            actors: statusInfo
+          };
+        }
+      } catch (e) {
+        console.error('Failed to fetch TVMaze show details:', e);
+      }
+    } else if (omdbApiKey.value.trim()) {
+      const apiKey = omdbApiKey.value.trim();
+      try {
+        const res = await fetch(`https://www.omdbapi.com/?i=${movie.id}&apikey=${apiKey}`);
+        if (res.ok) {
+          const detail = await res.json();
+          if (detail.Response !== 'False') {
+            return {
+              director: detail.Director && detail.Director !== 'N/A' ? detail.Director : undefined,
+              actors: detail.Actors && detail.Actors !== 'N/A' ? detail.Actors : undefined,
+              runtime: detail.Runtime && detail.Runtime !== 'N/A' ? detail.Runtime : undefined
+            };
+          }
+        }
+      } catch (e) {
+        console.error('Failed to fetch OMDb movie details:', e);
+      }
+    }
+    return {};
+  };
+
   return {
     searchResults,
     isSearching,
@@ -180,6 +238,7 @@ export function useMovieSearch() {
     omdbApiKey,
     searchMovies,
     clearSearch,
-    validateOmdbKey
+    validateOmdbKey,
+    fetchMovieDetails
   };
 }

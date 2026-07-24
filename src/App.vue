@@ -30,7 +30,7 @@ watch(currentTheme, (newTheme) => {
 }, { immediate: true });
 
 const { watchlist, addToWatchlist, removeFromWatchlist, toggleWatched, updateNotes, updateUserRating, updateWatchedAt, clearWatchlist } = useWatchlist();
-const { searchResults, isSearching, searchError, searchMovies, clearSearch, omdbApiKey, validateOmdbKey } = useMovieSearch();
+const { searchResults, isSearching, searchError, searchMovies, clearSearch, omdbApiKey, validateOmdbKey, fetchMovieDetails } = useMovieSearch();
 const { exportToCSV, exportToJSON, importFromJSON } = useWatchlistBackup();
 
 const query = ref('');
@@ -182,10 +182,32 @@ const adjustGoal = (delta: number) => {
 
 const selectedDetailMovie = ref<any | null>(null);
 const showDetailModal = ref(false);
+const isLoadingDetails = ref(false);
 
-const openDetailModal = (movie: any) => {
-  selectedDetailMovie.value = movie;
+const openDetailModal = async (movie: any) => {
+  selectedDetailMovie.value = { ...movie };
   showDetailModal.value = true;
+  isLoadingDetails.value = true;
+
+  try {
+    const extra = await fetchMovieDetails(movie);
+    selectedDetailMovie.value = {
+      ...selectedDetailMovie.value,
+      ...extra
+    };
+
+    // Cache extra metadata onto existing watchlist item if present
+    const item = watchlist.value.find(m => m.id === movie.id);
+    if (item) {
+      if (extra.director) item.director = extra.director;
+      if (extra.actors) item.actors = extra.actors;
+      if (extra.runtime) item.runtime = extra.runtime;
+    }
+  } catch (e) {
+    console.error('Error fetching extra movie details:', e);
+  } finally {
+    isLoadingDetails.value = false;
+  }
 };
 
 const showSettingsModal = ref(false);
@@ -446,7 +468,7 @@ const toggleNotesSection = (id: string) => {
         </div>
         <div class="movie-grid">
           <div v-for="movie in searchResults" :key="movie.id" class="movie-card fade-in">
-            <div class="poster-container">
+            <div class="poster-container" @click="openDetailModal(movie)" style="cursor: pointer;" title="Click to view details">
               <img v-if="movie.poster" :src="movie.poster" :alt="movie.title" loading="lazy" />
               <div v-else class="poster-placeholder">
                 <span>🎬</span>
@@ -455,7 +477,7 @@ const toggleNotesSection = (id: string) => {
             </div>
             <div class="movie-info">
               <span class="movie-year">{{ movie.year }}</span>
-              <h4>{{ movie.title }}</h4>
+              <h4 @click="openDetailModal(movie)" style="cursor: pointer;" title="Click to view details">{{ movie.title }}</h4>
               <p class="movie-plot">{{ movie.plot }}</p>
               <div class="genre-row">
                 <span v-for="g in movie.genre" :key="g" class="genre-badge">{{ g }}</span>
@@ -629,10 +651,11 @@ const toggleNotesSection = (id: string) => {
         <!-- Active Watchlist Grid -->
         <div v-if="filteredWatchlist.length > 0" class="movie-grid">
           <div v-for="movie in filteredWatchlist" :key="movie.id" class="movie-card fade-in" :class="{ 'movie-watched': movie.watched }">
-            <div class="poster-container">
+            <div class="poster-container" @click="openDetailModal(movie)" style="cursor: pointer;" title="Click to view details">
               <input 
                 type="checkbox" 
                 :checked="selectedMovieIds.includes(movie.id)" 
+                @click.stop
                 @change="toggleSelectMovie(movie.id)" 
                 class="card-select-checkbox"
                 title="Select movie for bulk operations"
@@ -652,7 +675,7 @@ const toggleNotesSection = (id: string) => {
                 </span>
               </div>
               <div class="title-row">
-                <h4>{{ movie.title }}</h4>
+                <h4 @click="openDetailModal(movie)" style="cursor: pointer;" title="Click to view details">{{ movie.title }}</h4>
                 <div v-if="movie.userRating" class="user-card-rating" :title="'Rated ' + movie.userRating + '/5'">
                   <span v-for="star in movie.userRating" :key="star" class="star-fill">★</span>
                   <span v-for="star in (5 - movie.userRating)" :key="star" class="star-empty">☆</span>
@@ -872,6 +895,9 @@ const toggleNotesSection = (id: string) => {
           <button @click="showDetailModal = false" class="close-modal-btn">✕</button>
         </div>
         <div class="modal-body detail-modal-body">
+          <div v-if="isLoadingDetails" class="detail-loading-badge fade-in">
+            🔄 Fetching enriched metadata...
+          </div>
           <div class="detail-hero">
             <div class="detail-poster-wrap">
               <img v-if="selectedDetailMovie.poster" :src="selectedDetailMovie.poster" :alt="selectedDetailMovie.title" />
@@ -904,17 +930,17 @@ const toggleNotesSection = (id: string) => {
 
           <div class="detail-section">
             <h5>Plot Summary</h5>
-            <p class="plot-text">{{ selectedDetailMovie.plot }}</p>
+            <p class="plot-text">{{ selectedDetailMovie.plot || 'No plot summary available.' }}</p>
           </div>
 
-          <div v-if="selectedDetailMovie.director" class="detail-section">
-            <h5>Director</h5>
-            <p class="meta-value">{{ selectedDetailMovie.director }}</p>
+          <div class="detail-section">
+            <h5>Director / Network</h5>
+            <p class="meta-value">{{ selectedDetailMovie.director || 'N/A' }}</p>
           </div>
 
-          <div v-if="selectedDetailMovie.actors" class="detail-section">
-            <h5>Cast & Starring</h5>
-            <p class="meta-value">{{ selectedDetailMovie.actors }}</p>
+          <div class="detail-section">
+            <h5>Cast & Status</h5>
+            <p class="meta-value">{{ selectedDetailMovie.actors || 'N/A' }}</p>
           </div>
 
           <div v-if="selectedDetailMovie.notes" class="detail-section">
@@ -2556,5 +2582,18 @@ h3 {
   font-size: 12px;
   color: var(--text-secondary);
   margin-top: 8px;
+}
+
+/* Detail loading badge styles */
+.detail-loading-badge {
+  background: rgba(139, 92, 246, 0.15);
+  border: 1px solid var(--accent-purple);
+  color: var(--text-primary);
+  padding: 8px 14px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  margin-bottom: 14px;
+  display: inline-block;
 }
 </style>

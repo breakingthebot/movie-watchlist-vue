@@ -129,4 +129,20 @@ describe('useMovieSearch composable', () => {
 
     expect(isValid).toBe(false);
   });
+
+  it('should fetch deep show details from TVMaze on demand', async () => {
+    vi.spyOn(globalThis, 'fetch').mockImplementation(() =>
+      Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({ runtime: 60, status: 'Running', language: 'English', network: { name: 'HBO' } })
+      } as Response)
+    );
+
+    const { fetchMovieDetails } = useMovieSearch();
+    const details = await fetchMovieDetails({ id: 'tvm-500' });
+
+    expect(details.runtime).toBe('60 min');
+    expect(details.director).toBe('Network: HBO');
+    expect(details.actors).toBe('Status: Running (English)');
+  });
 });
