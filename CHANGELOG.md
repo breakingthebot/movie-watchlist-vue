@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.17.0] - 2026-07-23
+
+### Added
+- Created `src/utils/bulk.ts` module providing `bulkMarkWatched` and `bulkDeleteMovies`.
+- Rendered selection checkboxes on poster card overlays in `src/App.vue`.
+- Built floating bulk actions toolbar (`floating-bulk-bar`) providing Select All / Deselect All, Mark Watched (✓), Mark Plan (⏳), and Delete Selected (🗑️).
+- Written 3 unit tests in `src/utils/bulk.spec.ts`.
+
 ## [0.16.0] - 2026-07-23
 
 ### Added

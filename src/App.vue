@@ -11,6 +11,7 @@ import { filterWatchlistMovies } from './utils/filter';
 import { pickRandomMovie } from './utils/picker';
 import { applyThemePreset, STORAGE_KEY_THEME } from './utils/theme';
 import type { ThemePreset } from './utils/theme';
+import { bulkMarkWatched, bulkDeleteMovies } from './utils/bulk';
 
 const STORAGE_KEY_GOAL = 'pulse_monthly_goal';
 const monthlyGoal = ref<number>(parseInt(localStorage.getItem(STORAGE_KEY_GOAL) || '5', 10));
@@ -72,6 +73,40 @@ const spinWheel = () => {
       isSpinning.value = false;
     }
   }, 90);
+};
+
+const selectedMovieIds = ref<string[]>([]);
+
+const toggleSelectMovie = (id: string) => {
+  if (selectedMovieIds.value.includes(id)) {
+    selectedMovieIds.value = selectedMovieIds.value.filter(i => i !== id);
+  } else {
+    selectedMovieIds.value.push(id);
+  }
+};
+
+const toggleSelectAll = () => {
+  if (selectedMovieIds.value.length === filteredWatchlist.value.length) {
+    selectedMovieIds.value = [];
+  } else {
+    selectedMovieIds.value = filteredWatchlist.value.map(m => m.id);
+  }
+};
+
+const isAllSelected = computed(() => {
+  return filteredWatchlist.value.length > 0 && selectedMovieIds.value.length === filteredWatchlist.value.length;
+});
+
+const handleBulkMarkWatched = (watched: boolean) => {
+  if (selectedMovieIds.value.length === 0) return;
+  watchlist.value = bulkMarkWatched(watchlist.value, selectedMovieIds.value, watched);
+  selectedMovieIds.value = [];
+};
+
+const handleBulkDelete = () => {
+  if (selectedMovieIds.value.length === 0) return;
+  watchlist.value = bulkDeleteMovies(watchlist.value, selectedMovieIds.value);
+  selectedMovieIds.value = [];
 };
 
 const showAnalytics = ref(true);
@@ -485,6 +520,13 @@ const toggleNotesSection = (id: string) => {
         <div v-if="filteredWatchlist.length > 0" class="movie-grid">
           <div v-for="movie in filteredWatchlist" :key="movie.id" class="movie-card fade-in" :class="{ 'movie-watched': movie.watched }">
             <div class="poster-container">
+              <input 
+                type="checkbox" 
+                :checked="selectedMovieIds.includes(movie.id)" 
+                @change="toggleSelectMovie(movie.id)" 
+                class="card-select-checkbox"
+                title="Select movie for bulk operations"
+              />
               <img v-if="movie.poster" :src="movie.poster" :alt="movie.title" loading="lazy" />
               <div v-else class="poster-placeholder">
                 <span>🎬</span>
@@ -806,6 +848,27 @@ const toggleNotesSection = (id: string) => {
             View Full Details
           </button>
         </div>
+      </div>
+    </div>
+
+    <!-- Floating Bulk Actions Toolbar -->
+    <div v-if="selectedMovieIds.length > 0" class="floating-bulk-bar fade-in">
+      <div class="bulk-info">
+        <span class="bulk-count-badge">{{ selectedMovieIds.length }} Selected</span>
+        <button @click="toggleSelectAll" class="btn btn-xs btn-secondary">
+          {{ isAllSelected ? 'Deselect All' : 'Select All' }}
+        </button>
+      </div>
+      <div class="bulk-actions-group">
+        <button @click="handleBulkMarkWatched(true)" class="btn btn-sm btn-green" title="Mark selected as watched">
+          ✓ Mark Watched
+        </button>
+        <button @click="handleBulkMarkWatched(false)" class="btn btn-sm btn-secondary" title="Mark selected as plan to watch">
+          ⏳ Mark Plan
+        </button>
+        <button @click="handleBulkDelete" class="btn btn-sm btn-coral" title="Delete selected movies">
+          🗑️ Delete Selected
+        </button>
       </div>
     </div>
   </div>
@@ -2211,5 +2274,66 @@ h3 {
   border-color: #3b82f6;
   background: rgba(59, 130, 246, 0.15);
   box-shadow: 0 0 12px rgba(59, 130, 246, 0.3);
+}
+
+/* Card Selection Checkbox & Floating Bulk Actions Bar */
+.card-select-checkbox {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  width: 20px;
+  height: 20px;
+  z-index: 10;
+  cursor: pointer;
+  accent-color: var(--accent-purple);
+}
+
+.floating-bulk-bar {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
+  padding: 12px 20px;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  z-index: 999;
+}
+
+.bulk-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.bulk-count-badge {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--accent-purple);
+}
+
+.bulk-actions-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.btn-sm {
+  padding: 6px 12px !important;
+  font-size: 12px !important;
+  border-radius: 8px !important;
+}
+
+.btn-green {
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: white;
+  border: none;
+}
+.btn-green:hover {
+  filter: brightness(1.1);
 }
 </style>
