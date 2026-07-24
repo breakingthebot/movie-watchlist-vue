@@ -19,6 +19,9 @@ export interface Movie {
   addedAt: string;
   userRating?: number;
   watchedAt?: string;
+  director?: string;
+  actors?: string;
+  runtime?: string;
 }
 
 const STORAGE_KEY = 'pulse_movie_watchlist';

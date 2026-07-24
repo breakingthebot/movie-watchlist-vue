@@ -20,6 +20,14 @@ const sortBy = ref<SortOption>('date-desc');
 const showAnalytics = ref(true);
 const genreStatsList = computed(() => getGenreStats(watchlist.value));
 
+const selectedDetailMovie = ref<any | null>(null);
+const showDetailModal = ref(false);
+
+const openDetailModal = (movie: any) => {
+  selectedDetailMovie.value = movie;
+  showDetailModal.value = true;
+};
+
 const showSettingsModal = ref(false);
 const tempApiKey = ref(omdbApiKey.value);
 const validationStatus = ref<'idle' | 'validating' | 'valid' | 'invalid'>('idle');
@@ -249,9 +257,14 @@ const toggleNotesSection = (id: string) => {
               <div class="genre-row">
                 <span v-for="g in movie.genre" :key="g" class="genre-badge">{{ g }}</span>
               </div>
-              <button @click="handleAddToWatchlist(movie)" class="btn btn-purple btn-block">
-                + Add to Watchlist
-              </button>
+              <div class="search-actions-group">
+                <button @click="handleAddToWatchlist(movie)" class="btn btn-purple btn-block">
+                  + Add to Watchlist
+                </button>
+                <button @click="openDetailModal(movie)" class="btn btn-secondary btn-icon-only" title="View Full Details">
+                  ℹ️
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -385,6 +398,13 @@ const toggleNotesSection = (id: string) => {
                 
                 <div class="btn-group">
                   <button 
+                    @click="openDetailModal(movie)" 
+                    class="btn btn-secondary btn-icon-only" 
+                    title="View Full Details"
+                  >
+                    ℹ️
+                  </button>
+                  <button 
                     @click="toggleNotesSection(movie.id)" 
                     class="btn btn-secondary btn-icon-only" 
                     title="Write personal review/notes"
@@ -513,6 +533,69 @@ const toggleNotesSection = (id: string) => {
         <div class="modal-footer">
           <button @click="handleClearKey" class="btn btn-secondary" :disabled="!tempApiKey">Clear Key</button>
           <button @click="handleSaveSettings" class="btn btn-primary">Save Config</button>
+        </div>
+      </div>
+    </div>
+    <!-- Detailed Movie Info Modal -->
+    <div v-if="showDetailModal && selectedDetailMovie" class="modal-overlay fade-in" @click.self="showDetailModal = false">
+      <div class="modal-card detail-modal-card">
+        <div class="modal-header">
+          <h4>Movie Overview & Metadata</h4>
+          <button @click="showDetailModal = false" class="close-modal-btn">✕</button>
+        </div>
+        <div class="modal-body detail-modal-body">
+          <div class="detail-hero">
+            <div class="detail-poster-wrap">
+              <img v-if="selectedDetailMovie.poster" :src="selectedDetailMovie.poster" :alt="selectedDetailMovie.title" />
+              <div v-else class="poster-placeholder">
+                <span>🎬</span>
+              </div>
+            </div>
+            <div class="detail-main-meta">
+              <h2>{{ selectedDetailMovie.title }}</h2>
+              <div class="detail-badges-row">
+                <span class="detail-badge badge-purple">{{ selectedDetailMovie.year }}</span>
+                <span class="detail-badge badge-yellow">★ {{ selectedDetailMovie.rating }}</span>
+                <span v-if="selectedDetailMovie.runtime" class="detail-badge badge-blue">⏱️ {{ selectedDetailMovie.runtime }}</span>
+                <span v-if="selectedDetailMovie.watched !== undefined" class="detail-badge" :class="selectedDetailMovie.watched ? 'badge-green' : 'badge-coral'">
+                  {{ selectedDetailMovie.watched ? '✓ Watched' : '⏳ Plan to Watch' }}
+                </span>
+              </div>
+              
+              <div class="genre-row margin-top">
+                <span v-for="g in selectedDetailMovie.genre" :key="g" class="genre-badge">{{ g }}</span>
+              </div>
+
+              <div v-if="selectedDetailMovie.userRating" class="detail-user-rating">
+                <span class="rating-label">My Personal Rating:</span>
+                <span v-for="star in selectedDetailMovie.userRating" :key="star" class="star-fill">★</span>
+                <span v-for="star in (5 - selectedDetailMovie.userRating)" :key="star" class="star-empty">☆</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="detail-section">
+            <h5>Plot Summary</h5>
+            <p class="plot-text">{{ selectedDetailMovie.plot }}</p>
+          </div>
+
+          <div v-if="selectedDetailMovie.director" class="detail-section">
+            <h5>Director</h5>
+            <p class="meta-value">{{ selectedDetailMovie.director }}</p>
+          </div>
+
+          <div v-if="selectedDetailMovie.actors" class="detail-section">
+            <h5>Cast & Starring</h5>
+            <p class="meta-value">{{ selectedDetailMovie.actors }}</p>
+          </div>
+
+          <div v-if="selectedDetailMovie.notes" class="detail-section">
+            <h5>My Review Notes</h5>
+            <p class="notes-text">{{ selectedDetailMovie.notes }}</p>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button @click="showDetailModal = false" class="btn btn-primary">Close Overview</button>
         </div>
       </div>
     </div>
@@ -1502,5 +1585,116 @@ h3 {
 
 .sort-select:focus {
   border-color: var(--accent-purple);
+}
+
+/* Movie Detail Modal Styles */
+.detail-modal-card {
+  max-width: 600px !important;
+}
+
+.detail-modal-body {
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
+.detail-hero {
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+}
+
+.detail-poster-wrap {
+  width: 120px;
+  height: 170px;
+  border-radius: 12px;
+  overflow: hidden;
+  flex-shrink: 0;
+  border: 1px solid var(--border-color);
+  background: var(--bg-card);
+}
+
+.detail-poster-wrap img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.detail-main-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  text-align: left;
+}
+
+.detail-main-meta h2 {
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.detail-badges-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.detail-badge {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border-color);
+}
+
+.badge-purple { color: #c084fc; border-color: rgba(192, 132, 252, 0.3); }
+.badge-yellow { color: #fcd34d; border-color: rgba(252, 211, 77, 0.3); }
+.badge-blue { color: #60a5fa; border-color: rgba(96, 165, 250, 0.3); }
+.badge-green { color: #4ade80; border-color: rgba(74, 222, 128, 0.3); }
+.badge-coral { color: #f87171; border-color: rgba(248, 113, 113, 0.3); }
+
+.detail-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  text-align: left;
+  border-top: 1px solid var(--border-color);
+  padding-top: 14px;
+}
+
+.detail-section h5 {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-secondary);
+}
+
+.plot-text {
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--text-primary);
+}
+
+.meta-value, .notes-text {
+  font-size: 13px;
+  color: var(--text-primary);
+}
+
+.margin-top {
+  margin-top: 4px;
+}
+
+.detail-user-rating {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+}
+
+.search-actions-group {
+  display: flex;
+  gap: 8px;
+  width: 100%;
 }
 </style>

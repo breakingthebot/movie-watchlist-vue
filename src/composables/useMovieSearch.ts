@@ -14,6 +14,9 @@ export interface SearchResult {
   genre: string[];
   rating: string;
   plot: string;
+  director?: string;
+  actors?: string;
+  runtime?: string;
 }
 
 const STORAGE_KEY_OMDB = 'pulse_omdb_api_key';
@@ -85,7 +88,10 @@ export function useMovieSearch() {
           poster: detail.Poster && detail.Poster !== 'N/A' ? detail.Poster : '',
           genre: genreList,
           rating: detail.imdbRating || 'N/A',
-          plot: detail.Plot && detail.Plot !== 'N/A' ? detail.Plot : 'No description available.'
+          plot: detail.Plot && detail.Plot !== 'N/A' ? detail.Plot : 'No description available.',
+          director: detail.Director && detail.Director !== 'N/A' ? detail.Director : undefined,
+          actors: detail.Actors && detail.Actors !== 'N/A' ? detail.Actors : undefined,
+          runtime: detail.Runtime && detail.Runtime !== 'N/A' ? detail.Runtime : undefined
         };
       });
   };

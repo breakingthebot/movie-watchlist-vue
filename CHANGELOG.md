@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.12.0] - 2026-07-23
+
+### Added
+- Extended `SearchResult` and `Movie` interfaces with optional `director`, `actors`, and `runtime` fields.
+- Mapped extra OMDb API fields inside `useMovieSearch.ts`.
+- Integrated `selectedDetailMovie` and `showDetailModal` state in `src/App.vue`.
+- Built rich `MovieDetailModal` view displaying full plot summaries, directors, cast members, badges, and user reviews.
+- Added info buttons (`ℹ️`) on search results and watchlist cards.
+
 ## [0.11.0] - 2026-07-23
 
 ### Added
