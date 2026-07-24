@@ -4,6 +4,8 @@ import { useWatchlist } from './composables/useWatchlist';
 import { useMovieSearch } from './composables/useMovieSearch';
 import { useWatchlistBackup } from './composables/useWatchlistBackup';
 import { getGenreStats } from './utils/stats';
+import { sortWatchlist } from './utils/sort';
+import type { SortOption } from './utils/sort';
 
 const { watchlist, addToWatchlist, removeFromWatchlist, toggleWatched, updateNotes, updateUserRating, updateWatchedAt } = useWatchlist();
 const { searchResults, isSearching, searchError, searchMovies, clearSearch, omdbApiKey, validateOmdbKey } = useMovieSearch();
@@ -13,6 +15,7 @@ const query = ref('');
 const activeTab = ref<'all' | 'plan' | 'watched'>('all');
 const selectedGenre = ref<string>('All');
 const activeNotesMovieId = ref<string | null>(null);
+const sortBy = ref<SortOption>('date-desc');
 
 const showAnalytics = ref(true);
 const genreStatsList = computed(() => getGenreStats(watchlist.value));
@@ -121,22 +124,23 @@ const availableGenres = computed(() => {
   return ['All', ...Array.from(genres).sort()];
 });
 
-// Filtered watchlist matching tab and genre selectors
+// Filtered and sorted watchlist matching tab, genre, and sort selectors
 const filteredWatchlist = computed(() => {
-  return watchlist.value.filter(movie => {
+  const filtered = watchlist.value.filter((movie) => {
     // Tab filter
-    const matchesTab = 
+    const matchesTab =
       activeTab.value === 'all' ||
       (activeTab.value === 'plan' && !movie.watched) ||
       (activeTab.value === 'watched' && movie.watched);
-      
+
     // Genre filter
-    const matchesGenre = 
-      selectedGenre.value === 'All' || 
-      movie.genre.includes(selectedGenre.value);
+    const matchesGenre =
+      selectedGenre.value === 'All' || movie.genre.includes(selectedGenre.value);
 
     return matchesTab && matchesGenre;
   });
+
+  return sortWatchlist(filtered, sortBy.value);
 });
 
 // Watchlist stats summary counters
@@ -284,29 +288,44 @@ const toggleNotesSection = (id: string) => {
         <div class="watchlist-header">
           <h3>My Watchlist</h3>
           
-          <!-- Tabs selection bar -->
-          <div class="tabs">
-            <button 
-              @click="activeTab = 'all'" 
-              class="tab-btn" 
-              :class="{ active: activeTab === 'all' }"
-            >
-              All
-            </button>
-            <button 
-              @click="activeTab = 'plan'" 
-              class="tab-btn" 
-              :class="{ active: activeTab === 'plan' }"
-            >
-              Plan to Watch
-            </button>
-            <button 
-              @click="activeTab = 'watched'" 
-              class="tab-btn" 
-              :class="{ active: activeTab === 'watched' }"
-            >
-              Watched
-            </button>
+          <div class="header-controls">
+            <!-- Tabs selection bar -->
+            <div class="tabs">
+              <button 
+                @click="activeTab = 'all'" 
+                class="tab-btn" 
+                :class="{ active: activeTab === 'all' }"
+              >
+                All
+              </button>
+              <button 
+                @click="activeTab = 'plan'" 
+                class="tab-btn" 
+                :class="{ active: activeTab === 'plan' }"
+              >
+                Plan to Watch
+              </button>
+              <button 
+                @click="activeTab = 'watched'" 
+                class="tab-btn" 
+                :class="{ active: activeTab === 'watched' }"
+              >
+                Watched
+              </button>
+            </div>
+
+            <!-- Sorting selector -->
+            <div class="sort-group">
+              <label for="sortSelect">Sort:</label>
+              <select id="sortSelect" v-model="sortBy" class="sort-select">
+                <option value="date-desc">Newest Added</option>
+                <option value="date-asc">Oldest Added</option>
+                <option value="title-asc">Title (A-Z)</option>
+                <option value="title-desc">Title (Z-A)</option>
+                <option value="rating-desc">Highest Rated</option>
+                <option value="year-desc">Release Year</option>
+              </select>
+            </div>
           </div>
         </div>
 
@@ -1447,5 +1466,41 @@ h3 {
   font-size: 11px;
   font-weight: 600;
   color: var(--accent-green);
+}
+
+/* Header controls and sorting styles */
+.header-controls {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.sort-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sort-group label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.sort-select {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  color: var(--text-primary);
+  padding: 8px 12px;
+  font-family: inherit;
+  font-size: 13px;
+  outline: none;
+  cursor: pointer;
+}
+
+.sort-select:focus {
+  border-color: var(--accent-purple);
 }
 </style>

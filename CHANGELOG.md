@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.11.0] - 2026-07-23
+
+### Added
+- Created `src/utils/sort.ts` module with `sortWatchlist` supporting Date, Title, Rating, and Release Year sorting.
+- Integrated dynamic sorting dropdown select control in the `watchlist-header` of `src/App.vue`.
+- Updated `filteredWatchlist` computed property to execute real-time array sorting.
+- Written 5 unit tests in `src/utils/sort.spec.ts` asserting all sorting options.
+
 ## [0.10.0] - 2026-07-23
 
 ### Added
