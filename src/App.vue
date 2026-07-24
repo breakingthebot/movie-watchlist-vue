@@ -8,6 +8,7 @@ import { sortWatchlist } from './utils/sort';
 import type { SortOption } from './utils/sort';
 import { calculateMonthlyGoalProgress } from './utils/goal';
 import { filterWatchlistMovies } from './utils/filter';
+import { pickRandomMovie } from './utils/picker';
 
 const STORAGE_KEY_GOAL = 'pulse_monthly_goal';
 const monthlyGoal = ref<number>(parseInt(localStorage.getItem(STORAGE_KEY_GOAL) || '5', 10));
@@ -26,6 +27,43 @@ const selectedGenre = ref<string>('All');
 const activeNotesMovieId = ref<string | null>(null);
 const sortBy = ref<SortOption>('date-desc');
 const localQuery = ref('');
+
+const showPickerModal = ref(false);
+const pickedMovie = ref<any | null>(null);
+const isSpinning = ref(false);
+const displaySpinTitle = ref('');
+
+const handlePickMovie = () => {
+  if (watchlist.value.length === 0) return;
+  showPickerModal.value = true;
+  spinWheel();
+};
+
+const spinWheel = () => {
+  isSpinning.value = true;
+  pickedMovie.value = null;
+
+  const finalPick = pickRandomMovie(watchlist.value);
+  if (!finalPick) {
+    isSpinning.value = false;
+    return;
+  }
+
+  let counter = 0;
+  const totalTicks = 18;
+  const interval = setInterval(() => {
+    const randomTemp = watchlist.value[Math.floor(Math.random() * watchlist.value.length)];
+    displaySpinTitle.value = randomTemp ? randomTemp.title : '';
+    counter++;
+
+    if (counter >= totalTicks) {
+      clearInterval(interval);
+      pickedMovie.value = finalPick;
+      displaySpinTitle.value = finalPick.title;
+      isSpinning.value = false;
+    }
+  }, 90);
+};
 
 const showAnalytics = ref(true);
 const genreStatsList = computed(() => getGenreStats(watchlist.value));
@@ -396,6 +434,16 @@ const toggleNotesSection = (id: string) => {
               </button>
             </div>
 
+            <!-- Random Pick Button -->
+            <button 
+              v-if="watchlist.length > 0" 
+              @click="handlePickMovie" 
+              class="btn btn-purple pick-btn" 
+              title="Spin random movie generator"
+            >
+              🎲 Pick For Me
+            </button>
+
             <!-- Sorting selector -->
             <div class="sort-group">
               <label for="sortSelect">Sort:</label>
@@ -665,6 +713,53 @@ const toggleNotesSection = (id: string) => {
         </div>
         <div class="modal-footer">
           <button @click="showDetailModal = false" class="btn btn-primary">Close Overview</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Random Movie Picker Modal -->
+    <div v-if="showPickerModal" class="modal-overlay fade-in" @click.self="showPickerModal = false">
+      <div class="modal-card picker-modal-card">
+        <div class="modal-header">
+          <h4>🎲 What To Watch Generator</h4>
+          <button @click="showPickerModal = false" class="close-modal-btn">✕</button>
+        </div>
+        <div class="modal-body text-center">
+          <div v-if="isSpinning" class="spinning-container">
+            <div class="spin-wheel-icon">🎰</div>
+            <p class="spinning-label">Picking the perfect movie from your watchlist...</p>
+            <h3 class="spin-title">{{ displaySpinTitle }}</h3>
+          </div>
+
+          <div v-else-if="pickedMovie" class="picked-result-container fade-in">
+            <div class="picked-badge">🎉 We Picked For You!</div>
+            <div class="picked-card">
+              <div class="picked-poster">
+                <img v-if="pickedMovie.poster" :src="pickedMovie.poster" :alt="pickedMovie.title" />
+                <div v-else class="poster-placeholder"><span>🎬</span></div>
+              </div>
+              <div class="picked-details">
+                <h3>{{ pickedMovie.title }}</h3>
+                <div class="detail-badges-row">
+                  <span class="detail-badge badge-purple">{{ pickedMovie.year }}</span>
+                  <span class="detail-badge badge-yellow">★ {{ pickedMovie.rating }}</span>
+                </div>
+                <p class="picked-plot">{{ pickedMovie.plot }}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button @click="spinWheel" class="btn btn-secondary" :disabled="isSpinning">
+            🔄 Spin Again
+          </button>
+          <button 
+            v-if="pickedMovie" 
+            @click="openDetailModal(pickedMovie); showPickerModal = false;" 
+            class="btn btn-primary"
+          >
+            View Full Details
+          </button>
         </div>
       </div>
     </div>
@@ -1917,5 +2012,107 @@ h3 {
 
 .clear-local-btn:hover {
   color: var(--text-primary);
+}
+
+/* Random Picker Modal styles */
+.picker-modal-card {
+  max-width: 480px !important;
+}
+
+.spinning-container {
+  padding: 32px 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+.spin-wheel-icon {
+  font-size: 48px;
+  animation: pulse 1s infinite alternate;
+}
+
+.spinning-label {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.spin-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--accent-purple);
+  min-height: 30px;
+}
+
+.picked-result-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+.picked-badge {
+  font-size: 12px;
+  font-weight: 700;
+  color: #34d399;
+  background: rgba(52, 211, 153, 0.1);
+  border: 1px solid rgba(52, 211, 153, 0.3);
+  padding: 6px 14px;
+  border-radius: 20px;
+}
+
+.picked-card {
+  display: flex;
+  gap: 16px;
+  text-align: left;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 16px;
+  width: 100%;
+}
+
+.picked-poster {
+  width: 90px;
+  height: 130px;
+  border-radius: 8px;
+  overflow: hidden;
+  flex-shrink: 0;
+  background: var(--bg-card);
+}
+
+.picked-poster img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.picked-details {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.picked-details h3 {
+  font-size: 18px;
+  font-weight: 700;
+  margin: 0;
+}
+
+.picked-plot {
+  font-size: 12px;
+  color: var(--text-secondary);
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.pick-btn {
+  font-size: 13px !important;
+  padding: 8px 14px !important;
+  border-radius: 10px !important;
 }
 </style>

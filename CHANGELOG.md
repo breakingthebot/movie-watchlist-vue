@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.15.0] - 2026-07-23
+
+### Added
+- Created `src/utils/picker.ts` pure utility function to select random unwatched movies from a list.
+- Added `🎲 Pick For Me` button in the watchlist header controls of `src/App.vue`.
+- Built `PickerModal` with title-cycling wheel spin animation (🎰).
+- Provided quick actions to re-spin (`🔄 Spin Again`) or view full details.
+- Written 3 unit tests in `src/utils/picker.spec.ts`.
+
 ## [0.14.0] - 2026-07-23
 
 ### Added
