@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.16.0] - 2026-07-23
+
+### Added
+- Created `src/utils/theme.ts` module with Cyberpunk, Emerald, Sunset, and Midnight theme color schemes.
+- Integrated `currentTheme` reactive state and LocalStorage sync (`pulse_theme_preset`) in `src/App.vue`.
+- Added **Dashboard Aesthetic Theme** preset selector grid inside Settings modal.
+- Dynamic CSS root property injection (`applyThemePreset`).
+- Written 3 unit tests in `src/utils/theme.spec.ts`.
+
 ## [0.15.0] - 2026-07-23
 
 ### Added

@@ -9,6 +9,8 @@ import type { SortOption } from './utils/sort';
 import { calculateMonthlyGoalProgress } from './utils/goal';
 import { filterWatchlistMovies } from './utils/filter';
 import { pickRandomMovie } from './utils/picker';
+import { applyThemePreset, STORAGE_KEY_THEME } from './utils/theme';
+import type { ThemePreset } from './utils/theme';
 
 const STORAGE_KEY_GOAL = 'pulse_monthly_goal';
 const monthlyGoal = ref<number>(parseInt(localStorage.getItem(STORAGE_KEY_GOAL) || '5', 10));
@@ -16,6 +18,13 @@ const monthlyGoal = ref<number>(parseInt(localStorage.getItem(STORAGE_KEY_GOAL) 
 watch(monthlyGoal, (newGoal) => {
   localStorage.setItem(STORAGE_KEY_GOAL, String(newGoal));
 });
+
+const currentTheme = ref<ThemePreset>((localStorage.getItem(STORAGE_KEY_THEME) as any) || 'cyberpunk');
+
+watch(currentTheme, (newTheme) => {
+  localStorage.setItem(STORAGE_KEY_THEME, newTheme);
+  applyThemePreset(newTheme);
+}, { immediate: true });
 
 const { watchlist, addToWatchlist, removeFromWatchlist, toggleWatched, updateNotes, updateUserRating, updateWatchedAt } = useWatchlist();
 const { searchResults, isSearching, searchError, searchMovies, clearSearch, omdbApiKey, validateOmdbKey } = useMovieSearch();
@@ -613,9 +622,45 @@ const toggleNotesSection = (id: string) => {
             <span v-else-if="validationStatus === 'invalid'" class="status-invalid">❌ Invalid API Key. Please verify key is active.</span>
           </div>
 
+          <!-- Color Theme Presets Section -->
+          <div class="form-group">
+            <label>Dashboard Aesthetic Theme:</label>
+            <p class="input-tip">Choose a visual color scheme preset for your watchlist dashboard.</p>
+            <div class="theme-selector-grid">
+              <button 
+                @click="currentTheme = 'cyberpunk'" 
+                class="theme-chip-btn chip-cyberpunk" 
+                :class="{ active: currentTheme === 'cyberpunk' }"
+              >
+                <span>🔮 Cyberpunk</span>
+              </button>
+              <button 
+                @click="currentTheme = 'emerald'" 
+                class="theme-chip-btn chip-emerald" 
+                :class="{ active: currentTheme === 'emerald' }"
+              >
+                <span>🌿 Emerald</span>
+              </button>
+              <button 
+                @click="currentTheme = 'sunset'" 
+                class="theme-chip-btn chip-sunset" 
+                :class="{ active: currentTheme === 'sunset' }"
+              >
+                <span>🌅 Sunset</span>
+              </button>
+              <button 
+                @click="currentTheme = 'midnight'" 
+                class="theme-chip-btn chip-midnight" 
+                :class="{ active: currentTheme === 'midnight' }"
+              >
+                <span>🌌 Midnight</span>
+              </button>
+            </div>
+          </div>
+
           <hr class="modal-divider" />
 
-          <!-- Backups Export Section -->
+          <!-- OMDb API Key Section -->
           <div class="form-group">
             <label>Backup & Export Watchlist Data:</label>
             <p class="input-tip">Download your list as a spreadsheet report or raw JSON configuration profile backup.</p>
@@ -2114,5 +2159,57 @@ h3 {
   font-size: 13px !important;
   padding: 8px 14px !important;
   border-radius: 10px !important;
+}
+
+/* Theme Preset Selector Styles */
+.theme-selector-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  margin-top: 6px;
+}
+
+.theme-chip-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 14px;
+  border-radius: 10px;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid var(--border-color);
+  background: var(--bg-card);
+  color: var(--text-primary);
+  transition: all 0.2s ease;
+}
+
+.theme-chip-btn:hover {
+  transform: translateY(-2px);
+}
+
+.chip-cyberpunk.active {
+  border-color: #8b5cf6;
+  background: rgba(139, 92, 246, 0.15);
+  box-shadow: 0 0 12px rgba(139, 92, 246, 0.3);
+}
+
+.chip-emerald.active {
+  border-color: #10b981;
+  background: rgba(16, 185, 129, 0.15);
+  box-shadow: 0 0 12px rgba(16, 185, 129, 0.3);
+}
+
+.chip-sunset.active {
+  border-color: #f97316;
+  background: rgba(249, 115, 22, 0.15);
+  box-shadow: 0 0 12px rgba(249, 115, 22, 0.3);
+}
+
+.chip-midnight.active {
+  border-color: #3b82f6;
+  background: rgba(59, 130, 246, 0.15);
+  box-shadow: 0 0 12px rgba(59, 130, 246, 0.3);
 }
 </style>
