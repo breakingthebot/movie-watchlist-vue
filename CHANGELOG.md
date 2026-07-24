@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.20.0] - 2026-07-23
+
+### Added
+- Added `clearWatchlist` action in `src/composables/useWatchlist.ts`.
+- Built Danger Zone section in Settings modal with `🗑️ Clear Entire Watchlist` button trigger.
+- Constructed double-confirmation modal dialog (`showClearConfirmModal`) preventing accidental data wipes.
+- Written 1 new unit test in `src/composables/useWatchlist.spec.ts`.
+
 ## [0.19.0] - 2026-07-23
 
 ### Added

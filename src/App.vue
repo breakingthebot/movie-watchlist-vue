@@ -29,7 +29,7 @@ watch(currentTheme, (newTheme) => {
   applyThemePreset(newTheme);
 }, { immediate: true });
 
-const { watchlist, addToWatchlist, removeFromWatchlist, toggleWatched, updateNotes, updateUserRating, updateWatchedAt } = useWatchlist();
+const { watchlist, addToWatchlist, removeFromWatchlist, toggleWatched, updateNotes, updateUserRating, updateWatchedAt, clearWatchlist } = useWatchlist();
 const { searchResults, isSearching, searchError, searchMovies, clearSearch, omdbApiKey, validateOmdbKey } = useMovieSearch();
 const { exportToCSV, exportToJSON, importFromJSON } = useWatchlistBackup();
 
@@ -110,6 +110,16 @@ const handleBulkDelete = () => {
   if (selectedMovieIds.value.length === 0) return;
   watchlist.value = bulkDeleteMovies(watchlist.value, selectedMovieIds.value);
   selectedMovieIds.value = [];
+};
+
+const showClearConfirmModal = ref(false);
+
+const handleConfirmClearAll = () => {
+  clearWatchlist();
+  showClearConfirmModal.value = false;
+  showSettingsModal.value = false;
+  shareFeedback.value = '🗑️ Watchlist has been cleared.';
+  setTimeout(() => { shareFeedback.value = null; }, 3500);
 };
 
 const shareFeedback = ref<string | null>(null);
@@ -828,6 +838,20 @@ const toggleNotesSection = (id: string) => {
             />
           </div>
 
+          <!-- Danger Zone Section -->
+          <hr class="modal-divider" />
+          <div class="form-group danger-zone">
+            <label class="danger-label">Danger Zone:</label>
+            <p class="input-tip">Wipe all cached movies, reviews, and ratings from your local cache.</p>
+            <button 
+              @click="showClearConfirmModal = true" 
+              class="btn btn-coral btn-block" 
+              :disabled="watchlist.length === 0"
+            >
+              🗑️ Clear Entire Watchlist
+            </button>
+          </div>
+
           <div class="validation-row" v-if="backupFeedback">
             <span :class="backupFeedbackType === 'success' ? 'status-valid' : 'status-invalid'">
               {{ backupFeedback }}
@@ -946,6 +970,30 @@ const toggleNotesSection = (id: string) => {
             class="btn btn-primary"
           >
             View Full Details
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Clear All Confirmation Modal -->
+    <div v-if="showClearConfirmModal" class="modal-overlay fade-in" @click.self="showClearConfirmModal = false">
+      <div class="modal-card confirm-modal-card">
+        <div class="modal-header">
+          <h4>⚠️ Confirm Clear Watchlist</h4>
+          <button @click="showClearConfirmModal = false" class="close-modal-btn">✕</button>
+        </div>
+        <div class="modal-body text-center">
+          <p class="confirm-warning-text">
+            Are you sure you want to delete all <strong>{{ watchlist.length }}</strong> movies from your watchlist?
+          </p>
+          <p class="confirm-subtext">This action cannot be undone unless you have an exported JSON backup file.</p>
+        </div>
+        <div class="modal-footer">
+          <button @click="showClearConfirmModal = false" class="btn btn-secondary">
+            Cancel
+          </button>
+          <button @click="handleConfirmClearAll" class="btn btn-coral">
+            Yes, Clear All Movies
           </button>
         </div>
       </div>
@@ -2478,5 +2526,35 @@ h3 {
   font-weight: 600;
   text-align: center;
   box-shadow: 0 4px 16px rgba(139, 92, 246, 0.2);
+}
+
+/* Danger Zone & Confirm Modal Styles */
+.danger-zone {
+  border-top: 1px dashed rgba(248, 113, 113, 0.3);
+  padding-top: 12px;
+}
+
+.danger-label {
+  color: #f87171 !important;
+}
+
+.confirm-modal-card {
+  max-width: 440px !important;
+}
+
+.confirm-warning-text {
+  font-size: 15px;
+  color: var(--text-primary);
+  line-height: 1.5;
+}
+
+.confirm-warning-text strong {
+  color: #f87171;
+}
+
+.confirm-subtext {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-top: 8px;
 }
 </style>

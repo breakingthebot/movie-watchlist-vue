@@ -123,6 +123,13 @@ export function useWatchlist() {
     }
   };
 
+  /**
+   * Clears all movies from the watchlist.
+   */
+  const clearWatchlist = () => {
+    watchlist.value = [];
+  };
+
   return {
     watchlist,
     isLoading,
@@ -132,6 +139,7 @@ export function useWatchlist() {
     toggleWatched,
     updateNotes,
     updateUserRating,
-    updateWatchedAt
+    updateWatchedAt,
+    clearWatchlist
   };
 }

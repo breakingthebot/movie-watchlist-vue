@@ -95,4 +95,13 @@ describe('useWatchlist composable', () => {
     updateWatchedAt(mockMovie.id, '2026-07-23');
     expect(watchlist.value[0].watchedAt).toBe('2026-07-23');
   });
+
+  it('should clear all items from watchlist', () => {
+    const { watchlist, addToWatchlist, clearWatchlist } = useWatchlist();
+    addToWatchlist(mockMovie);
+    expect(watchlist.value.length).toBe(1);
+
+    clearWatchlist();
+    expect(watchlist.value.length).toBe(0);
+  });
 });
