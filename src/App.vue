@@ -7,6 +7,7 @@ import { getGenreStats } from './utils/stats';
 import { sortWatchlist } from './utils/sort';
 import type { SortOption } from './utils/sort';
 import { calculateMonthlyGoalProgress } from './utils/goal';
+import { filterWatchlistMovies } from './utils/filter';
 
 const STORAGE_KEY_GOAL = 'pulse_monthly_goal';
 const monthlyGoal = ref<number>(parseInt(localStorage.getItem(STORAGE_KEY_GOAL) || '5', 10));
@@ -24,6 +25,7 @@ const activeTab = ref<'all' | 'plan' | 'watched'>('all');
 const selectedGenre = ref<string>('All');
 const activeNotesMovieId = ref<string | null>(null);
 const sortBy = ref<SortOption>('date-desc');
+const localQuery = ref('');
 
 const showAnalytics = ref(true);
 const genreStatsList = computed(() => getGenreStats(watchlist.value));
@@ -151,21 +153,14 @@ const availableGenres = computed(() => {
   return ['All', ...Array.from(genres).sort()];
 });
 
-// Filtered and sorted watchlist matching tab, genre, and sort selectors
+// Filtered and sorted watchlist matching tab, genre, search query, and sort selectors
 const filteredWatchlist = computed(() => {
-  const filtered = watchlist.value.filter((movie) => {
-    // Tab filter
-    const matchesTab =
-      activeTab.value === 'all' ||
-      (activeTab.value === 'plan' && !movie.watched) ||
-      (activeTab.value === 'watched' && movie.watched);
-
-    // Genre filter
-    const matchesGenre =
-      selectedGenre.value === 'All' || movie.genre.includes(selectedGenre.value);
-
-    return matchesTab && matchesGenre;
-  });
+  const filtered = filterWatchlistMovies(
+    watchlist.value,
+    activeTab.value,
+    selectedGenre.value,
+    localQuery.value
+  );
 
   return sortWatchlist(filtered, sortBy.value);
 });
@@ -358,6 +353,24 @@ const toggleNotesSection = (id: string) => {
           <h3>My Watchlist</h3>
           
           <div class="header-controls">
+            <!-- Inline Local Watchlist Title Search Filter -->
+            <div class="local-search-wrapper">
+              <input 
+                v-model="localQuery" 
+                type="text" 
+                placeholder="Filter saved movies..." 
+                class="local-search-input"
+              />
+              <button 
+                v-if="localQuery" 
+                @click="localQuery = ''" 
+                class="clear-local-btn" 
+                title="Clear title filter"
+              >
+                ✕
+              </button>
+            </div>
+
             <!-- Tabs selection bar -->
             <div class="tabs">
               <button 
@@ -1864,5 +1877,45 @@ h3 {
   font-weight: 600;
   color: #34d399;
   text-align: left;
+}
+
+/* Local search filter styles */
+.local-search-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.local-search-input {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  color: var(--text-primary);
+  padding: 8px 32px 8px 12px;
+  font-family: inherit;
+  font-size: 13px;
+  outline: none;
+  width: 180px;
+  transition: border-color 0.2s, width 0.2s;
+}
+
+.local-search-input:focus {
+  border-color: var(--accent-purple);
+  width: 220px;
+}
+
+.clear-local-btn {
+  position: absolute;
+  right: 8px;
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 12px;
+  padding: 4px;
+}
+
+.clear-local-btn:hover {
+  color: var(--text-primary);
 }
 </style>
