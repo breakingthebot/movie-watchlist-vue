@@ -13,6 +13,7 @@ import { pickRandomMovie } from './utils/picker';
 import { applyThemePreset, STORAGE_KEY_THEME } from './utils/theme';
 import type { ThemePreset } from './utils/theme';
 import { bulkMarkWatched, bulkDeleteMovies } from './utils/bulk';
+import { encodeWatchlistToHash, decodeWatchlistFromHash } from './utils/share';
 
 const STORAGE_KEY_GOAL = 'pulse_monthly_goal';
 const monthlyGoal = ref<number>(parseInt(localStorage.getItem(STORAGE_KEY_GOAL) || '5', 10));
@@ -110,6 +111,50 @@ const handleBulkDelete = () => {
   watchlist.value = bulkDeleteMovies(watchlist.value, selectedMovieIds.value);
   selectedMovieIds.value = [];
 };
+
+const shareFeedback = ref<string | null>(null);
+
+const handleShareLink = async () => {
+  if (watchlist.value.length === 0) return;
+  const hash = encodeWatchlistToHash(watchlist.value);
+  const url = `${window.location.origin}${window.location.pathname}#list=${hash}`;
+  try {
+    await navigator.clipboard.writeText(url);
+    shareFeedback.value = '🔗 Shareable link copied to clipboard!';
+    setTimeout(() => { shareFeedback.value = null; }, 3500);
+  } catch (e) {
+    shareFeedback.value = 'Failed to copy link automatically.';
+  }
+};
+
+// Check for incoming shared watchlist hash parameter
+if (typeof window !== 'undefined' && window.location.hash.startsWith('#list=')) {
+  const b64 = window.location.hash.replace('#list=', '');
+  const sharedItems = decodeWatchlistFromHash(b64);
+  if (sharedItems.length > 0) {
+    let importedCount = 0;
+    sharedItems.forEach((item) => {
+      if (item.title) {
+        const exists = watchlist.value.some(m => m.title.toLowerCase() === item.title!.toLowerCase());
+        if (!exists) {
+          addToWatchlist({
+            id: item.id || `shared-${Date.now()}`,
+            title: item.title,
+            year: item.year || 'N/A',
+            poster: item.poster || '',
+            genre: item.genre || [],
+            rating: item.rating || 'N/A',
+            plot: item.plot || ''
+          });
+          importedCount++;
+        }
+      }
+    });
+    shareFeedback.value = `📥 Imported ${importedCount} shared movie(s) into your watchlist!`;
+    setTimeout(() => { shareFeedback.value = null; }, 4000);
+    window.history.replaceState(null, '', window.location.pathname);
+  }
+}
 
 const showAnalytics = ref(true);
 const genreStatsList = computed(() => getGenreStats(watchlist.value));
@@ -292,6 +337,14 @@ const toggleNotesSection = (id: string) => {
           </div>
         </div>
         <button 
+          v-if="watchlist.length > 0" 
+          @click="handleShareLink" 
+          class="btn btn-secondary share-trigger-btn" 
+          title="Copy shareable link"
+        >
+          🔗 Share Link
+        </button>
+        <button 
           @click="showSettingsModal = true" 
           class="btn btn-secondary btn-icon-only settings-trigger-btn" 
           title="API Configuration Settings"
@@ -300,6 +353,10 @@ const toggleNotesSection = (id: string) => {
         </button>
       </div>
     </header>
+
+    <div v-if="shareFeedback" class="toast-banner fade-in">
+      {{ shareFeedback }}
+    </div>
 
     <main class="content-wrapper">
       <!-- Goal Tracker Banner -->
@@ -2401,5 +2458,25 @@ h3 {
   background: var(--accent-purple);
   border-color: var(--accent-purple);
   color: white;
+}
+
+/* Share link & Toast banner styles */
+.share-trigger-btn {
+  font-size: 13px !important;
+  padding: 8px 14px !important;
+  border-radius: 10px !important;
+}
+
+.toast-banner {
+  background: rgba(139, 92, 246, 0.15);
+  border: 1px solid var(--accent-purple);
+  color: var(--text-primary);
+  padding: 12px 18px;
+  border-radius: 12px;
+  margin-bottom: 20px;
+  font-size: 14px;
+  font-weight: 600;
+  text-align: center;
+  box-shadow: 0 4px 16px rgba(139, 92, 246, 0.2);
 }
 </style>

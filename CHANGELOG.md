@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.19.0] - 2026-07-23
+
+### Added
+- Created `src/utils/share.ts` module providing `encodeWatchlistToHash` and `decodeWatchlistFromHash`.
+- Added **🔗 Share Link** action button in top navbar header of `src/App.vue`.
+- Added automatic URL hash parameter checking (`#list=...`) on page load to import shared watchlist items.
+- Added toast alert notification banner for copy/import events.
+- Written 3 unit tests in `src/utils/share.spec.ts`.
+
 ## [0.18.0] - 2026-07-23
 
 ### Added
