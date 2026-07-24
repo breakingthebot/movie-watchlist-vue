@@ -8,6 +8,7 @@ import { sortWatchlist } from './utils/sort';
 import type { SortOption } from './utils/sort';
 import { calculateMonthlyGoalProgress } from './utils/goal';
 import { filterWatchlistMovies } from './utils/filter';
+import type { RatingFilter } from './utils/filter';
 import { pickRandomMovie } from './utils/picker';
 import { applyThemePreset, STORAGE_KEY_THEME } from './utils/theme';
 import type { ThemePreset } from './utils/theme';
@@ -37,6 +38,7 @@ const selectedGenre = ref<string>('All');
 const activeNotesMovieId = ref<string | null>(null);
 const sortBy = ref<SortOption>('date-desc');
 const localQuery = ref('');
+const selectedRatingFilter = ref<RatingFilter>('all');
 
 const showPickerModal = ref(false);
 const pickedMovie = ref<any | null>(null);
@@ -235,13 +237,14 @@ const availableGenres = computed(() => {
   return ['All', ...Array.from(genres).sort()];
 });
 
-// Filtered and sorted watchlist matching tab, genre, search query, and sort selectors
+// Filtered and sorted watchlist matching tab, genre, search query, rating filter, and sort selectors
 const filteredWatchlist = computed(() => {
   const filtered = filterWatchlistMovies(
     watchlist.value,
     activeTab.value,
     selectedGenre.value,
-    localQuery.value
+    localQuery.value,
+    selectedRatingFilter.value
   );
 
   return sortWatchlist(filtered, sortBy.value);
@@ -501,6 +504,46 @@ const toggleNotesSection = (id: string) => {
               </select>
             </div>
           </div>
+        </div>
+
+        <!-- Dynamic Rating Filter Chips -->
+        <div class="rating-chips-container" v-if="watchlist.length > 0">
+          <span class="chips-label">Rating:</span>
+          <button 
+            @click="selectedRatingFilter = 'all'" 
+            class="chip-btn rating-chip" 
+            :class="{ active: selectedRatingFilter === 'all' }"
+          >
+            All Ratings
+          </button>
+          <button 
+            @click="selectedRatingFilter = '5'" 
+            class="chip-btn rating-chip" 
+            :class="{ active: selectedRatingFilter === '5' }"
+          >
+            ★ 5 Stars
+          </button>
+          <button 
+            @click="selectedRatingFilter = '4+'" 
+            class="chip-btn rating-chip" 
+            :class="{ active: selectedRatingFilter === '4+' }"
+          >
+            ★ 4+ Stars
+          </button>
+          <button 
+            @click="selectedRatingFilter = '3+'" 
+            class="chip-btn rating-chip" 
+            :class="{ active: selectedRatingFilter === '3+' }"
+          >
+            ★ 3+ Stars
+          </button>
+          <button 
+            @click="selectedRatingFilter = 'unrated'" 
+            class="chip-btn rating-chip" 
+            :class="{ active: selectedRatingFilter === 'unrated' }"
+          >
+            Unrated
+          </button>
         </div>
 
         <!-- Dynamic Genre Filter Chips -->
@@ -2335,5 +2378,28 @@ h3 {
 }
 .btn-green:hover {
   filter: brightness(1.1);
+}
+
+/* Rating filter chips bar styles */
+.rating-chips-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  flex-wrap: wrap;
+}
+
+.chips-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.rating-chip.active {
+  background: var(--accent-purple);
+  border-color: var(--accent-purple);
+  color: white;
 }
 </style>

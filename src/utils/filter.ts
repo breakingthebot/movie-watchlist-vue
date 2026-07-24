@@ -6,19 +6,17 @@
 
 import type { Movie } from '../composables/useWatchlist';
 
+export type RatingFilter = 'all' | '5' | '4+' | '3+' | 'unrated';
+
 /**
- * Filters movies based on active tab, selected genre, and local search query.
- * @param movies List of movies to filter.
- * @param tab Active view tab ('all' | 'plan' | 'watched').
- * @param genre Selected genre tag.
- * @param localQuery Text query to match against titles.
- * @returns Filtered array of movies.
+ * Filters movies based on active tab, selected genre, local search query, and rating filter.
  */
 export function filterWatchlistMovies(
   movies: Movie[],
   tab: 'all' | 'plan' | 'watched',
   genre: string,
-  localQuery: string
+  localQuery: string,
+  ratingFilter: RatingFilter = 'all'
 ): Movie[] {
   const query = localQuery.trim().toLowerCase();
 
@@ -32,6 +30,19 @@ export function filterWatchlistMovies(
 
     const matchesQuery = !query || movie.title.toLowerCase().includes(query);
 
-    return matchesTab && matchesGenre && matchesQuery;
+    let matchesRating = true;
+    const userRating = movie.userRating || 0;
+
+    if (ratingFilter === '5') {
+      matchesRating = userRating === 5;
+    } else if (ratingFilter === '4+') {
+      matchesRating = userRating >= 4;
+    } else if (ratingFilter === '3+') {
+      matchesRating = userRating >= 3;
+    } else if (ratingFilter === 'unrated') {
+      matchesRating = !movie.userRating;
+    }
+
+    return matchesTab && matchesGenre && matchesQuery && matchesRating;
   });
 }

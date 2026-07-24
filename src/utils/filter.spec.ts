@@ -18,6 +18,7 @@ const mockMovies: Movie[] = [
     rating: '9.0',
     plot: '',
     watched: true,
+    userRating: 5,
     addedAt: '2026-01-01'
   },
   {
@@ -29,6 +30,7 @@ const mockMovies: Movie[] = [
     rating: '8.8',
     plot: '',
     watched: false,
+    userRating: 4,
     addedAt: '2026-01-02'
   },
   {
@@ -60,5 +62,18 @@ describe('filterWatchlistMovies utility', () => {
   it('should return empty list when query does not match any items', () => {
     const res = filterWatchlistMovies(mockMovies, 'all', 'All', 'nonexistent');
     expect(res.length).toBe(0);
+  });
+
+  it('should filter movies by user rating filter', () => {
+    const res5 = filterWatchlistMovies(mockMovies, 'all', 'All', '', '5');
+    expect(res5.length).toBe(1);
+    expect(res5[0].title).toBe('The Dark Knight');
+
+    const res4 = filterWatchlistMovies(mockMovies, 'all', 'All', '', '4+');
+    expect(res4.length).toBe(2);
+
+    const resUnrated = filterWatchlistMovies(mockMovies, 'all', 'All', '', 'unrated');
+    expect(resUnrated.length).toBe(1);
+    expect(resUnrated[0].title).toBe('Interstellar');
   });
 });
