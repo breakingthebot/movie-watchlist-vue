@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.13.0] - 2026-07-23
+
+### Added
+- Created `src/utils/goal.ts` calculating monthly target counts, watched completions, and percentage progress.
+- Integrated `monthlyGoal` state and LocalStorage sync (`pulse_monthly_goal`).
+- Built top-level **Monthly Watch Goal** banner card with `+` and `-` target controls and celebration alerts.
+- Rendered goal progress bar with gradient completion fills.
+- Written 3 unit tests in `src/utils/goal.spec.ts`.
+
 ## [0.12.0] - 2026-07-23
 
 ### Added

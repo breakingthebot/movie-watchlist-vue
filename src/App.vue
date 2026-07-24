@@ -1,11 +1,19 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { ref, computed, watch } from 'vue';
 import { useWatchlist } from './composables/useWatchlist';
 import { useMovieSearch } from './composables/useMovieSearch';
 import { useWatchlistBackup } from './composables/useWatchlistBackup';
 import { getGenreStats } from './utils/stats';
 import { sortWatchlist } from './utils/sort';
 import type { SortOption } from './utils/sort';
+import { calculateMonthlyGoalProgress } from './utils/goal';
+
+const STORAGE_KEY_GOAL = 'pulse_monthly_goal';
+const monthlyGoal = ref<number>(parseInt(localStorage.getItem(STORAGE_KEY_GOAL) || '5', 10));
+
+watch(monthlyGoal, (newGoal) => {
+  localStorage.setItem(STORAGE_KEY_GOAL, String(newGoal));
+});
 
 const { watchlist, addToWatchlist, removeFromWatchlist, toggleWatched, updateNotes, updateUserRating, updateWatchedAt } = useWatchlist();
 const { searchResults, isSearching, searchError, searchMovies, clearSearch, omdbApiKey, validateOmdbKey } = useMovieSearch();
@@ -19,6 +27,17 @@ const sortBy = ref<SortOption>('date-desc');
 
 const showAnalytics = ref(true);
 const genreStatsList = computed(() => getGenreStats(watchlist.value));
+
+const goalProgress = computed(() => {
+  return calculateMonthlyGoalProgress(watchlist.value, monthlyGoal.value);
+});
+
+const adjustGoal = (delta: number) => {
+  const newGoal = monthlyGoal.value + delta;
+  if (newGoal >= 1 && newGoal <= 100) {
+    monthlyGoal.value = newGoal;
+  }
+};
 
 const selectedDetailMovie = ref<any | null>(null);
 const showDetailModal = ref(false);
@@ -203,6 +222,43 @@ const toggleNotesSection = (id: string) => {
     </header>
 
     <main class="content-wrapper">
+      <!-- Goal Tracker Banner -->
+      <div class="goal-tracker-card fade-in">
+        <div class="goal-header-row">
+          <div class="goal-title">
+            <span class="goal-icon">🎯</span>
+            <div class="goal-text">
+              <h4>Monthly Watch Goal</h4>
+              <p class="goal-subtext">Track your target watch quota for this month</p>
+            </div>
+          </div>
+
+          <div class="goal-stat-group">
+            <div class="goal-counts">
+              <strong>{{ goalProgress.completed }}</strong> / <span>{{ goalProgress.target }} Watched</span>
+            </div>
+
+            <div class="goal-controls">
+              <button @click="adjustGoal(-1)" class="btn btn-xs btn-secondary" title="Decrease target goal">-</button>
+              <span class="goal-target-val">{{ monthlyGoal }}</span>
+              <button @click="adjustGoal(1)" class="btn btn-xs btn-secondary" title="Increase target goal">+</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="goal-progress-container">
+          <div 
+            class="goal-progress-fill" 
+            :class="{ 'goal-completed': goalProgress.isGoalReached }"
+            :style="{ width: goalProgress.percentage + '%' }"
+          ></div>
+        </div>
+
+        <div v-if="goalProgress.isGoalReached" class="goal-congrats-row fade-in">
+          🎉 Awesome job! You've achieved your monthly watch target of {{ monthlyGoal }} movies!
+        </div>
+      </div>
+
       <!-- Search Panel -->
       <section class="search-section card">
         <h2>Find Movies & Shows</h2>
@@ -1696,5 +1752,117 @@ h3 {
   display: flex;
   gap: 8px;
   width: 100%;
+}
+
+/* Goal Tracker Banner Styles */
+.goal-tracker-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
+  padding: 20px;
+  margin-bottom: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  box-shadow: var(--shadow-premium);
+}
+
+.goal-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.goal-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.goal-icon {
+  font-size: 24px;
+}
+
+.goal-text h4 {
+  font-size: 16px;
+  font-weight: 700;
+  margin: 0;
+  text-align: left;
+}
+
+.goal-subtext {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin: 0;
+  text-align: left;
+}
+
+.goal-stat-group {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.goal-counts {
+  font-size: 15px;
+  color: var(--text-secondary);
+}
+
+.goal-counts strong {
+  font-size: 18px;
+  color: var(--text-primary);
+}
+
+.goal-controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(0, 0, 0, 0.2);
+  padding: 4px 8px;
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+}
+
+.btn-xs {
+  padding: 2px 8px !important;
+  font-size: 12px !important;
+  border-radius: 4px !important;
+  height: 24px;
+  line-height: 1;
+}
+
+.goal-target-val {
+  font-size: 13px;
+  font-weight: 700;
+  min-width: 20px;
+  text-align: center;
+}
+
+.goal-progress-container {
+  width: 100%;
+  height: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.goal-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent-blue), var(--accent-purple));
+  border-radius: 6px;
+  transition: width 0.4s ease-out;
+}
+
+.goal-progress-fill.goal-completed {
+  background: linear-gradient(90deg, #10b981, #34d399);
+}
+
+.goal-congrats-row {
+  font-size: 12px;
+  font-weight: 600;
+  color: #34d399;
+  text-align: left;
 }
 </style>
